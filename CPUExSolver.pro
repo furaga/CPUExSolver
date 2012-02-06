@@ -12,11 +12,17 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    aboutdialog.cpp
+    aboutdialog.cpp \
+    edit.cpp \
+    file.cpp \
+    projectview.cpp \
+    help.cpp \
+    linker.cpp
 
 HEADERS  += mainwindow.h \
     global.h \
-    aboutdialog.h
+    aboutdialog.h \
+    linker.h
 
 FORMS    += mainwindow.ui \
     aboutdialog.ui

@@ -17,7 +17,9 @@ SOURCES += main.cpp\
     file.cpp \
     projectview.cpp \
     help.cpp \
-    linker.cpp
+    linker.cpp \
+    build.cpp \
+    run.cpp
 
 HEADERS  += mainwindow.h \
     global.h \

@@ -28,7 +28,9 @@ void MainWindow::initFile() {
 QTreeWidgetItem* MainWindow::createSrcFolder(QStringList files) {
     QTreeWidgetItem* folder = new QTreeWidgetItem(QStringList("src"));
     foreach (const QString& file, files) {
-        QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(file));
+        QString fileName = QFileInfo(file).fileName();
+        QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(fileName));
+        item->setWhatsThis(0, file);
         folder->addChild(item);
     }
     return folder;
@@ -37,7 +39,7 @@ QTreeWidgetItem* MainWindow::createSrcFolder(QStringList files) {
 //-------------------------------------------------------------
 // プロジェクトを作ってリストビューに表示
 //-------------------------------------------------------------
-void MainWindow::openProject() {
+void MainWindow::createProject() {
     QStringList names = QFileDialog::getOpenFileNames(
                 this,
                 "select ML/Assembly files",
@@ -48,10 +50,14 @@ void MainWindow::openProject() {
         QString fileName = fileInfo.fileName();
         QString projectName = QString(fileName).remove(QRegExp("[.].*"));
         // リストビューにプロジェクトを追加
-        QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(fileInfo.absolutePath() + "/" + projectName));
-        item->addChild(createSrcFolder(QStringList(fileName)));
+        QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(projectName));
+        item->setWhatsThis(0, fileInfo.canonicalFilePath());
+        item->addChild(createSrcFolder(QStringList(fileInfo.canonicalFilePath())));
         ui->treeWidget->addTopLevelItem(item);
         ui->treeWidget->expandAll();
+        if (startupProject == NULL) {
+            setStartupProject(item);
+        }
     }
 }
 
@@ -91,7 +97,6 @@ void MainWindow::createTextTab(const QString& path, const QString& tabName) {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->count() - 1);
 }
 
-
 //-------------------------------------------------------------
 // ファイルをエディタ画面に開く
 //-------------------------------------------------------------
@@ -100,19 +105,8 @@ void MainWindow::openFile() {
 }
 
 void MainWindow::openFile(QTreeWidgetItem* item, int idx) {
-    QTreeWidgetItem* p = item->parent();
-    if (p == NULL) return;
-    p = p->parent();
-    if (p == NULL) return;
-    QString path, tabName;
-    tabName = item->text(0);
-    if (p->text(0) == "lib") {
-        path = "./lib/" + tabName;
-    }
-    else {
-        path = QFileInfo(p->text(0)).absolutePath() + "/" + tabName;
-    }
-    createTextTab(path, tabName);
+    QString path = item->whatsThis(0);
+    createTextTab(path, QFileInfo(path).fileName());
 }
 
 //-------------------------------------------------------------

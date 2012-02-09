@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent) :
     initFile();
     initHelp();
     initProjectView();
+    initBuild();
 }
 
 //-------------------------------------------------------------
@@ -45,20 +46,21 @@ void MainWindow::addAction(QMenu* menu, const QString& title, const char* signal
     connect(action, signal, this, slot);
 }
 
+void MainWindow::errorMsg(const QString& msg) {
+    QMessageBox::critical(
+                NULL,
+                "ERROR",
+                msg,
+                QMessageBox::Ok,
+                QMessageBox::Cancel);
+}
+
 //=============================================================
 //
 // 「ビルド」メニュー系
 //
 //=============================================================
 
-//=============================================================
-//
-// 「実行」メニュー系
-//
-//=============================================================
-void MainWindow::run() {
-
-}
 
 //=============================================================
 //

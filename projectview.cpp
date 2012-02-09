@@ -28,7 +28,11 @@ void MainWindow::initProjectView() {
     if (dir.exists()) {
         QTreeWidgetItem* item = new QTreeWidgetItem(QStringList("lib"));
         ui->treeWidget->addTopLevelItem(item);
-        item->addChild(createSrcFolder(dir.entryList()));
+        QStringList srcs(dir.entryList());
+        for (int i = 0; i < srcs.count(); i++) {
+            srcs[i] = dir.canonicalPath() + "/" + srcs[i];
+        }
+        item->addChild(createSrcFolder(srcs));
     }
 
     //-------------------------------------------------------------
@@ -63,10 +67,18 @@ void MainWindow::initProjectView() {
 //-------------------------------------------------------------
 // 選択されたプロジェクトをスタートアッププロジェクトにする
 //-------------------------------------------------------------
+void MainWindow::setStartupProject(QTreeWidgetItem* item) {
+    if (startupProject != NULL) {
+        startupProject->setForeground(0, QBrush(QColor(0, 0, 0)));
+    }
+    startupProject = item;
+    if (startupProject != NULL) {
+        startupProject->setForeground(0, QBrush(QColor(255, 0, 0)));
+    }
+}
+
 void MainWindow::setStartupProject() {
-    if (startupProject != NULL) startupProject->setForeground(0, QBrush(QColor(0, 0, 0)));
-    startupProject = ui->treeWidget->currentItem();
-    if (startupProject != NULL) startupProject->setForeground(0, QBrush(QColor(255, 0, 0)));
+    setStartupProject(ui->treeWidget->currentItem());
 }
 
 //-------------------------------------------------------------
@@ -85,10 +97,18 @@ void MainWindow::deleteTreeNode(QTreeWidgetItem* target) {
 //-------------------------------------------------------------
 void MainWindow::removeProject() {
     QTreeWidgetItem* target = ui->treeWidget->currentItem();
-    if (startupProject == target) {
-        startupProject == NULL;
-    }
+    QTreeWidgetItem* prev = startupProject;
+    setStartupProject(NULL);
     deleteTreeNode(target);
+    if (prev == target) {
+        if (ui->treeWidget->topLevelItemCount() >= 2) {
+            setStartupProject(ui->treeWidget->topLevelItem(1));
+            ui->textEdit->append(QString("cnt = %1").arg(ui->treeWidget->topLevelItemCount()));
+        }
+    }
+    else {
+        setStartupProject(prev);
+    }
 }
 
 //-------------------------------------------------------------

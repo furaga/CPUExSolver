@@ -325,6 +325,9 @@ p, li { white-space: pre-wrap; }
    <property name="text">
     <string>ビルド(&amp;C)</string>
    </property>
+   <property name="shortcut">
+    <string>F6</string>
+   </property>
   </action>
   <action name="action_A_2">
    <property name="text">
@@ -334,6 +337,9 @@ p, li { white-space: pre-wrap; }
   <action name="action_S_2">
    <property name="text">
     <string>実行(&amp;S)</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
    </property>
   </action>
   <action name="action_A_3">
@@ -375,7 +381,7 @@ p, li { white-space: pre-wrap; }
    <sender>action_O</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>openProject()</slot>
+   <slot>createProject()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -628,6 +634,22 @@ p, li { white-space: pre-wrap; }
    </hints>
   </connection>
   <connection>
+   <sender>action_C_3</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>build()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>352</x>
+     <y>234</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
    <sender>action_S_2</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
@@ -643,9 +665,41 @@ p, li { white-space: pre-wrap; }
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>action_A_2</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>buildAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>352</x>
+     <y>234</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action_A_3</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>runAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>352</x>
+     <y>234</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
-  <slot>openProject()</slot>
+  <slot>createProject()</slot>
   <slot>newProject()</slot>
   <slot>saveFile()</slot>
   <slot>openFile(QTreeWidgetItem*,int)</slot>
@@ -664,5 +718,7 @@ p, li { white-space: pre-wrap; }
   <slot>showAbout()</slot>
   <slot>run()</slot>
   <slot>runAll()</slot>
+  <slot>build()</slot>
+  <slot>buildAll()</slot>
  </slots>
 </ui>

@@ -108,7 +108,7 @@ bool linker::link(QStringList srcs, QString dst) {
         while (stream[i].atEnd() == false) {
             const QString& line = stream[i].readLine();
             int pos = r.indexIn(line.trimmed());
-            if (pos > 0) continue;
+            if (pos > -1) continue;
             stream[cnt] << line << endl;
         }
     }

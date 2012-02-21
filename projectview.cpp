@@ -38,30 +38,31 @@ void MainWindow::initProjectView() {
     //-------------------------------------------------------------
     // プロジェクトビューで使うコンテキストメニューを作る
     //-------------------------------------------------------------
-
     // プロジェクト名を右クリックしたときのメニュー
     p_projectTreeMenu = new QMenu(ui->treeWidget);
-    addAction(p_projectTreeMenu, "set to startup project", SIGNAL(triggered()), SLOT(setStartupProject()));
+    addAction(p_projectTreeMenu, "スタートアッププロジェクトに設定(&S)", SIGNAL(triggered()), SLOT(setStartupProject()));
     p_projectTreeMenu->addSeparator();
-    addAction(p_projectTreeMenu, "remove this project", SIGNAL(triggered()), SLOT(removeProject()));
+    addAction(p_projectTreeMenu, "プロジェクトを削除", SIGNAL(triggered()), SLOT(removeProject()));
     p_projectTreeMenu->addSeparator();
-    addAction(p_projectTreeMenu, "build", SIGNAL(triggered()), SLOT(showAbout()));
-    addAction(p_projectTreeMenu, "run", SIGNAL(triggered()), SLOT(showAbout()));
+    addAction(p_projectTreeMenu, "ビルド(&B)", SIGNAL(triggered()), SLOT(buildSelectedProject()));
+    addAction(p_projectTreeMenu, "実行(&R)", SIGNAL(triggered()), SLOT(runSelectedProject()));
 
     // フォルダ名を右クリックしたときのメニュー
     f_projectTreeMenu = new QMenu(ui->treeWidget);
 
     // ファイル名を右クリックしたときのメニュー
     s_projectTreeMenu = new QMenu(ui->treeWidget);
-    addAction(s_projectTreeMenu, "open", SIGNAL(triggered()), SLOT(openFile()));
+    addAction(s_projectTreeMenu, "開く(&O)", SIGNAL(triggered()), SLOT(openFile()));
     s_projectTreeMenu->addSeparator();
-    addAction(s_projectTreeMenu, "remove", SIGNAL(triggered()), SLOT(removeTreeNode()));
+    addAction(s_projectTreeMenu, "プロジェクトから除外", SIGNAL(triggered()), SLOT(removeTreeNode()));
     s_projectTreeMenu->addSeparator();
-    addAction(s_projectTreeMenu, "build", SIGNAL(triggered()), SLOT(showAbout()));
-    addAction(s_projectTreeMenu, "run", SIGNAL(triggered()), SLOT(showAbout()));
+    addAction(s_projectTreeMenu, "ビルド(&B)", SIGNAL(triggered()), SLOT(buildSelectedProject()));
+    addAction(s_projectTreeMenu, "実行(&R)", SIGNAL(triggered()), SLOT(runSelectedProject()));
     s_projectTreeMenu->addSeparator();
-    addAction(s_projectTreeMenu, "add a file above this file", SIGNAL(triggered()), SLOT(showAbout()));
-    addAction(s_projectTreeMenu, "add a file below this file", SIGNAL(triggered()), SLOT(showAbout()));
+    addAction(s_projectTreeMenu, "上に既存のファイルを追加", SIGNAL(triggered()), SLOT(addExistFileAbove()));
+    addAction(s_projectTreeMenu, "上に新しいファイルを追加", SIGNAL(triggered()), SLOT(addNewFileAbove()));
+    addAction(s_projectTreeMenu, "下に既存のファイルを追加", SIGNAL(triggered()), SLOT(addExistFileBelow()));
+    addAction(s_projectTreeMenu, "下に新しいファイルを追加", SIGNAL(triggered()), SLOT(addNewFileBelow()));
 }
 
 //-------------------------------------------------------------
@@ -117,4 +118,66 @@ void MainWindow::removeProject() {
 void MainWindow::removeTreeNode() {
     QTreeWidgetItem* target = ui->treeWidget->currentItem();
     deleteTreeNode(target);
+}
+
+//-------------------------------------------------------------
+// ソースフォルダにファイルを追加
+//-------------------------------------------------------------
+void MainWindow::addFileToSrcFolder(const QString& filepath, int delta) {
+    if (filepath == "") return;
+    QString fileName = QFileInfo(filepath).fileName();
+    QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(fileName));
+    item->setWhatsThis(0, filepath);
+    QTreeWidgetItem* folder = ui->treeWidget->currentItem()->parent();
+    int idx = folder->indexOfChild(ui->treeWidget->currentItem()) + delta;
+    folder->insertChild(idx, item);
+}
+
+//-------------------------------------------------------------
+// 指定されたファイル名の上に新規ファイルを追加
+//-------------------------------------------------------------
+void MainWindow::addNewFileAbove() {
+    QString filepath = QFileDialog::getSaveFileName(
+                this,
+                "set ML/Assembly file name",
+                ".",
+                "ML/Assembly file (*.ml *.s)");
+    createNewFile(filepath);
+    addFileToSrcFolder(filepath, 0);
+}
+
+//-------------------------------------------------------------
+// 指定されたファイル名の上に既存のファイルを追加
+//-------------------------------------------------------------
+void MainWindow::addExistFileAbove() {
+    QString filepath = QFileDialog::getOpenFileName(
+                this,
+                "set ML/Assembly file name",
+                ".",
+                "ML/Assembly file (*.ml *.s)");
+    addFileToSrcFolder(filepath, 0);
+}
+//-------------------------------------------------------------
+// 指定されたファイル名の下に新規ファイルを追加
+//-------------------------------------------------------------
+void MainWindow::addNewFileBelow() {
+    QString filepath = QFileDialog::getSaveFileName(
+                this,
+                "set ML/Assembly file name",
+                ".",
+                "ML/Assembly file (*.ml *.s)");
+    createNewFile(filepath);
+    addFileToSrcFolder(filepath, 1);
+}
+
+//-------------------------------------------------------------
+// 指定されたファイル名の下に既存のファイルを追加
+//-------------------------------------------------------------
+void MainWindow::addExistFileBelow() {
+    QString filepath = QFileDialog::getOpenFileName(
+                this,
+                "set ML/Assembly file name",
+                ".",
+                "ML/Assembly file (*.ml *.s)");
+    addFileToSrcFolder(filepath, 1);
 }

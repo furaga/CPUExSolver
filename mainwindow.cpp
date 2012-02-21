@@ -55,15 +55,29 @@ void MainWindow::errorMsg(const QString& msg) {
                 QMessageBox::Cancel);
 }
 
-//=============================================================
-//
-// 「ビルド」メニュー系
-//
-//=============================================================
+void MainWindow::createNewFile(const QString& filepath) {
+    // 空のファイルを生成
+    QFile file(filepath);
+    file.open(QIODevice::WriteOnly | QIODevice::Text);
+    file.close();
+}
 
+void MainWindow::setInputFile() {
+    ui->lineEditInput->setText(
+                QFileDialog::getOpenFileName(
+                    this,
+                    "入力ファイルを選択してください"));
+}
 
-//=============================================================
-//
-// 「設定」メニュー系
-//
-//=============================================================
+void MainWindow::setOutputFile() {
+    ui->lineEditOutput->setText(
+                QFileDialog::getSaveFileName(
+                    this,
+                    "出力ファイルを選択してください"));
+}
+
+void MainWindow::toggleOutputEnable() {
+    bool enable = ui->checkBoxOutput->checkState() != Qt::Checked;
+    ui->lineEditOutput->setEnabled(enable);
+    ui->pushButtonOutput->setEnabled(enable);
+}

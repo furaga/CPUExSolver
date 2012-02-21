@@ -77,7 +77,7 @@ bool linker::link(QStringList srcs, QString dst) {
 
     // ソースファイルを開く
     for (int i = 0; i < cnt; i++) {
-        if (open(srcs[i], file[i], stream[i], QIODevice::ReadOnly | QIODevice::Text) == false) return false;
+        if (open(srcs[i], file[i], stream[i], QIODevice::ReadWrite | QIODevice::Text) == false) return false;
     }
 
     // 出力ファイルを開く

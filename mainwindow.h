@@ -3,6 +3,7 @@
 
 #include "ui_mainwindow.h"
 #include "linker.h"
+#include "finddialog.h"
 #include <QMainWindow>
 #include <QProcess>
 
@@ -26,6 +27,7 @@ public:
 private:
     Ui::MainWindow *ui;
     QTreeWidgetItem* createSrcFolder(QStringList files);
+    FindDialog* findDialog;
     aboutdialog* aboutdlg;
     QMenu* p_projectTreeMenu;
     QMenu* f_projectTreeMenu;
@@ -56,27 +58,31 @@ private:
     bool link_ml(QStringList files, QString target);
     bool link_asm(QStringList files, QString target);
     bool compile(QString compiler, QString target);
-    void updateOutput();
-    void updateError();
-    void processError(QProcess::ProcessError err);
-    void proc_finished(int ret, QProcess::ExitStatus stat);
-    bool build(const QString& src);
+    bool build(const QString& src, const QStringList& srcs);
+    bool build(QTreeWidgetItem* project);
+    QTreeWidgetItem* getProject(QTreeWidgetItem* item);
 
     // 実行メニュー系(run.cpp)
     void assemble(const QString& assembler, const QString& src, const QString& binary);
     void simulate(const QString& simulator, const QString& binary);
     void run(const QString& base);
+    void run(QTreeWidgetItem* project);
 
     void errorMsg(const QString& msg);
     void setStartupProject(QTreeWidgetItem* item);
 
+    void addFileToSrcFolder(const QString& filepath, int delta);
+
+    void createNewFile(const QString& filepath);
+
 private slots:
 
     // ファイルメニュー系(file.cpp)
+    void createProject(QString filepath);
     void createProject();
     void newProject();
     void openFile();
-    void openFile(QTreeWidgetItem* item, int idx);
+    void openItem(QTreeWidgetItem* item, int idx);
     void closeFile();
     void saveFile(int i);
     void saveFile();
@@ -92,15 +98,22 @@ private slots:
     void textEditDelete();
     void textEditSelectAll();
     void textEditFind();
+    void showFind();
     void textEditNextTab();
     void textEditBackTab();
 
     // ビルドメニュー系(build.cpp)
-    bool build();
+    void updateOutput();
+    void updateError();
+    void processError(QProcess::ProcessError err);
+    void proc_finished(int ret, QProcess::ExitStatus stat);
+    bool buildStartupProject();
+    bool buildSelectedProject();
     void buildAll();
 
     // 実行メニュー系(run.cpp)
-    void run();// {linker link; link.link(QStringList("./lib/lib_asm.s"), "./lib/dst.s"); }
+    void runStartupProject();
+    void runSelectedProject();
     void runAll();
 
     // 設定メニュー系
@@ -112,6 +125,15 @@ private slots:
     void setStartupProject();
     void removeProject();
     void removeTreeNode();
+    void addNewFileAbove();
+    void addExistFileAbove();
+    void addNewFileBelow();
+    void addExistFileBelow();
+
+    //
+    void setInputFile();
+    void setOutputFile();
+    void toggleOutputEnable();
 };
 
 #endif // MAINWINDOW_H

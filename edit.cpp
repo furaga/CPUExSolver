@@ -12,6 +12,7 @@
 //-------------------------------------------------------------
 void MainWindow::initEdit() {
     ui->tabWidget->clear();
+    findDialog = new FindDialog(this, ui->tabWidget);
 }
 
 //-------------------------------------------------------------
@@ -91,6 +92,10 @@ void MainWindow::textEditSelectAll() {
 //-------------------------------------------------------------
 void MainWindow::textEditFind() {
 
+}
+
+void MainWindow::showFind() {
+    findDialog->show();
 }
 
 //-------------------------------------------------------------

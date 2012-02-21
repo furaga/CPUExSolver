@@ -18,13 +18,18 @@ SOURCES += main.cpp\
     projectview.cpp \
     help.cpp \
     linker.cpp \
-    build.cpp \
-    run.cpp
+    run.cpp \
+    finddialog.cpp
 
 HEADERS  += mainwindow.h \
     global.h \
     aboutdialog.h \
-    linker.h
+    linker.h \
+    finddialog.h
 
 FORMS    += mainwindow.ui \
-    aboutdialog.ui
+    aboutdialog.ui \
+    finddialog.ui
+
+RESOURCES += \
+    resources.qrc

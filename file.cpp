@@ -39,25 +39,29 @@ QTreeWidgetItem* MainWindow::createSrcFolder(QStringList files) {
 //-------------------------------------------------------------
 // プロジェクトを作ってリストビューに表示
 //-------------------------------------------------------------
+void MainWindow::createProject(QString filepath) {
+    QFileInfo fileInfo = QFileInfo(filepath);
+    QString fileName = fileInfo.fileName();
+    QString projectName = QString(fileName).remove(QRegExp("[.].*"));
+    // リストビューにプロジェクトを追加
+    QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(projectName));
+    item->setWhatsThis(0, fileInfo.canonicalFilePath());
+    item->addChild(createSrcFolder(QStringList(fileInfo.canonicalFilePath())));
+    ui->treeWidget->addTopLevelItem(item);
+    ui->treeWidget->expandAll();
+    if (startupProject == NULL) {
+        setStartupProject(item);
+    }
+}
+
 void MainWindow::createProject() {
     QStringList names = QFileDialog::getOpenFileNames(
                 this,
                 "select ML/Assembly files",
                 ".",
                 "ML file (*.ml);;Assembly file (*.s)");
-    foreach (const QString& file, names) {
-        QFileInfo fileInfo = QFileInfo(file);
-        QString fileName = fileInfo.fileName();
-        QString projectName = QString(fileName).remove(QRegExp("[.].*"));
-        // リストビューにプロジェクトを追加
-        QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(projectName));
-        item->setWhatsThis(0, fileInfo.canonicalFilePath());
-        item->addChild(createSrcFolder(QStringList(fileInfo.canonicalFilePath())));
-        ui->treeWidget->addTopLevelItem(item);
-        ui->treeWidget->expandAll();
-        if (startupProject == NULL) {
-            setStartupProject(item);
-        }
+    foreach (const QString& filepath, names) {
+        createProject(filepath);
     }
 }
 
@@ -65,7 +69,16 @@ void MainWindow::createProject() {
 // プロジェクトを新規作成
 //-------------------------------------------------------------
 void MainWindow::newProject() {
-
+    QString filepath = QFileDialog::getSaveFileName(
+                this,
+                "set ML/Assembly file name",
+                ".",
+                "ML/Assembly file (*.ml *.s)");
+    if (filepath == "") return;
+    // 空のファイルを生成
+    createNewFile(filepath);
+    // プロジェクトを開く
+    createProject(filepath);
 }
 
 //-------------------------------------------------------------
@@ -101,12 +114,29 @@ void MainWindow::createTextTab(const QString& path, const QString& tabName) {
 // ファイルをエディタ画面に開く
 //-------------------------------------------------------------
 void MainWindow::openFile() {
-    openFile(ui->treeWidget->currentItem(), 0);
+    openItem(ui->treeWidget->currentItem(), 0);
 }
 
-void MainWindow::openFile(QTreeWidgetItem* item, int idx) {
-    QString path = item->whatsThis(0);
-    createTextTab(path, QFileInfo(path).fileName());
+//-------------------------------------------------------------
+// フォルダなら展開し、ファイルならエディタ画面に開く
+//-------------------------------------------------------------
+void MainWindow::openItem(QTreeWidgetItem* item, int idx) {
+    // 子ノードがあるならフォルダなので展開・畳み込みを行う
+    if (item->childCount() > 0) {
+        if (item->isExpanded()) {
+            ui->treeWidget->expandItem(item);
+        }
+        else {
+            ui->treeWidget->collapseItem(item);
+        }
+        return;
+    }
+
+    // ファイルが存在すればエディタ画面に開く
+    QString filepath = item->whatsThis(0);
+    if (QFile::exists(filepath)) {
+        createTextTab(filepath, QFileInfo(filepath).fileName());
+    }
 }
 
 //-------------------------------------------------------------

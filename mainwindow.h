@@ -3,6 +3,8 @@
 
 #include "ui_mainwindow.h"
 #include "linker.h"
+#include "aboutdialog.h"
+#include "configdialog.h"
 #include "finddialog.h"
 #include <QMainWindow>
 #include <QProcess>
@@ -13,7 +15,6 @@ class MainWindow;
 
 class QTextEdit;
 class QMenu;
-class aboutdialog;
 class QProcess;
 
 class MainWindow : public QMainWindow
@@ -27,8 +28,9 @@ public:
 private:
     Ui::MainWindow *ui;
     QTreeWidgetItem* createSrcFolder(QStringList files);
-    FindDialog* findDialog;
     aboutdialog* aboutdlg;
+    ConfigDialog* configdlg;
+    FindDialog* findDialog;
     QMenu* p_projectTreeMenu;
     QMenu* f_projectTreeMenu;
     QMenu* s_projectTreeMenu;
@@ -36,9 +38,10 @@ private:
     QProcess* process;
 
     // 初期化系
-    void initHelp();
     void initEdit();
     void initFile();
+    void initConfig();
+    void initHelp();
     void initProjectView();
     void initBuild();
 
@@ -117,6 +120,7 @@ private slots:
     void runAll();
 
     // 設定メニュー系
+    void showConfig();
 
     // ヘルプメニュー系(help.cpp)
     void showAbout();

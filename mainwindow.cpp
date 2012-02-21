@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     initEdit();
     initFile();
+    initConfig();
     initHelp();
     initProjectView();
     initBuild();

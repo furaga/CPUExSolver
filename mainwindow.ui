@@ -896,6 +896,22 @@ p, li { white-space: pre-wrap; }
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>action_S_3</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>showConfig()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>352</x>
+     <y>234</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>createProject()</slot>
@@ -925,5 +941,6 @@ p, li { white-space: pre-wrap; }
   <slot>toggleOutputEnable()</slot>
   <slot>setInputFile()</slot>
   <slot>setOutputFile()</slot>
+  <slot>showConfig()</slot>
  </slots>
 </ui>

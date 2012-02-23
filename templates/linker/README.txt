@@ -10,4 +10,4 @@
 
 	make linker.class
 
-・linker.tmpl と ../architecture.xml からlinker.java、linker.classを生成しています。
+・linker.java.tmpl と ../architecture.xml からlinker.java、linker.classを生成しています。

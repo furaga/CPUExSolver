@@ -1,4 +1,3 @@
-
 import java.util.regex.*;
 import java.io.*;
 
@@ -11,16 +10,11 @@ class linker
 			int cnt = args.length;
 			if (cnt < 2)
 			{
-				System.err.println("usage: java linker [src1] [src2] ... [dst]");
+				System.err.println("usage: java linker src1 [src2 src3 ...] dst");
 				return;
 			}
 
 			System.err.print("<link> ");
-			for (int i = 0; i < cnt - 1; i++)
-			{
-				System.err.print(args[i] + " ");
-			}
-			System.err.println("=> " + args[cnt - 1]);
 
 			// ソースファイルを開く
 			BufferedReader[] srcs = new BufferedReader[cnt - 1];
@@ -31,12 +25,14 @@ class linker
 			}
 
 			// 出力ファイルを開く
-        	FileOutputStream dstStream = new FileOutputStream(args[cnt - 1]);
-		    OutputStreamWriter dst = new OutputStreamWriter(dstStream, "UTF-8");
-			
+			FileOutputStream dstStream = new FileOutputStream(args[cnt - 1]);
+			OutputStreamWriter dst = new OutputStreamWriter(dstStream, "UTF-8");
+
+// TODO : 定数テーブルを使わないとき
+// BEGIN
 			// 各ソースファイルのヒープサイズを読み込む
 			int heapSum = 0;
-			int[] heapSizes = new int[args.length - 1];
+			int[] heapSizes = new int[cnt - 1];
 			Pattern heapSizePat = Pattern.compile("[.]init[_]heap[_]size[ \t]+(\\d+)");
 
 			for (int i = 0; i < cnt - 1; i++)
@@ -77,7 +73,8 @@ class linker
 					}
 				}
 			}
-
+// END
+			// メイン関数へジャンプ
 			dst.write("\tjmp\tmin_caml_start\n");
 			Pattern gotoMainPat = Pattern.compile("jmp[ \t]+min[_]caml[_]start");
 			
@@ -88,6 +85,7 @@ class linker
 				{
 					String line = srcs[i].readLine();
 					if (line == null) break;
+					// メイン関数へのジャンプ「jmp min_caml_start」は無視する
 					if (gotoMainPat.matcher(line).find() == false)
 					{
 						dst.write(line + "\n");
@@ -96,6 +94,12 @@ class linker
 				srcs[i].close();
 			}
 			dst.close();
+	
+			for (int i = 0; i < cnt - 1; i++)
+			{
+				System.err.print(args[i] + " ");
+			}
+			System.err.println("=> " + args[cnt - 1]);
 		}
 		catch (IOException e)
 		{

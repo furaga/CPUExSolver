@@ -28,8 +28,6 @@ class linker
 			FileOutputStream dstStream = new FileOutputStream(args[cnt - 1]);
 			OutputStreamWriter dst = new OutputStreamWriter(dstStream, "UTF-8");
 
-// TODO : 定数テーブルを使わないとき
-// BEGIN
 			// 各ソースファイルのヒープサイズを読み込む
 			int heapSum = 0;
 			int[] heapSizes = new int[cnt - 1];
@@ -73,12 +71,12 @@ class linker
 					}
 				}
 			}
-// END
+
 			// メイン関数へジャンプ
 			dst.write("\tjmp\tmin_caml_start\n");
-			Pattern gotoMainPat = Pattern.compile("jmp[ \t]+min[_]caml[_]start");
 			
 			// その他の部分を書き込んでファイルを閉じる
+			Pattern gotoMainPat = Pattern.compile("jmp[ \t]+min[_]caml[_]start");
 			for (int i = 0; i < cnt - 1; i++)
 			{
 				while (true)
@@ -107,4 +105,5 @@ class linker
 		}
 	}
 }
+
 

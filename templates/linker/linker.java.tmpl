@@ -1,8 +1,7 @@
 <%
 	# ラベルジャンプの命令名
 	jmp = xmlroot.find(".//BRANCH").get("name")
-%>
-import java.util.regex.*;
+%>import java.util.regex.*;
 import java.io.*;
 
 class linker
@@ -14,16 +13,11 @@ class linker
 			int cnt = args.length;
 			if (cnt < 2)
 			{
-				System.err.println("usage: java linker [src1] [src2] ... [dst]");
+				System.err.println("usage: java linker src1 [src2 src3 ...] dst");
 				return;
 			}
 
 			System.err.print("<link> ");
-			for (int i = 0; i < cnt - 1; i++)
-			{
-				System.err.print(args[i] + " ");
-			}
-			System.err.println("=> " + args[cnt - 1]);
 
 			// ソースファイルを開く
 			BufferedReader[] srcs = new BufferedReader[cnt - 1];
@@ -34,12 +28,13 @@ class linker
 			}
 
 			// 出力ファイルを開く
-        	FileOutputStream dstStream = new FileOutputStream(args[cnt - 1]);
-		    OutputStreamWriter dst = new OutputStreamWriter(dstStream, "UTF-8");
-			
+			FileOutputStream dstStream = new FileOutputStream(args[cnt - 1]);
+			OutputStreamWriter dst = new OutputStreamWriter(dstStream, "UTF-8");
+% if xmlroot.find(".//binary").get("constTableType") != "no_use":
+
 			// 各ソースファイルのヒープサイズを読み込む
 			int heapSum = 0;
-			int[] heapSizes = new int[args.length - 1];
+			int[] heapSizes = new int[cnt - 1];
 			Pattern heapSizePat = Pattern.compile("[.]init[_]heap[_]size[ \t]+(\\d+)");
 
 			for (int i = 0; i < cnt - 1; i++)
@@ -80,17 +75,20 @@ class linker
 					}
 				}
 			}
+% endif
 
+			// メイン関数へジャンプ
 			dst.write("\t${jmp}\tmin_caml_start\n");
-			Pattern gotoMainPat = Pattern.compile("${jmp}[ \t]+min[_]caml[_]start");
 			
 			// その他の部分を書き込んでファイルを閉じる
+			Pattern gotoMainPat = Pattern.compile("${jmp}[ \t]+min[_]caml[_]start");
 			for (int i = 0; i < cnt - 1; i++)
 			{
 				while (true)
 				{
 					String line = srcs[i].readLine();
 					if (line == null) break;
+					// メイン関数へのジャンプ「jmp min_caml_start」は無視する
 					if (gotoMainPat.matcher(line).find() == false)
 					{
 						dst.write(line + "\n");
@@ -99,6 +97,12 @@ class linker
 				srcs[i].close();
 			}
 			dst.close();
+	
+			for (int i = 0; i < cnt - 1; i++)
+			{
+				System.err.print(args[i] + " ");
+			}
+			System.err.println("=> " + args[cnt - 1]);
 		}
 		catch (IOException e)
 		{
@@ -106,3 +110,4 @@ class linker
 		}
 	}
 }
+

@@ -4,6 +4,7 @@ CONFIGFILE = ../architecture.xml
 
 # デフォルトではテスト用のファイルが使われる 
 SOURCES = ../tmp/inputs/lib_asm.s ../tmp/inputs/__temp__.s
+#SOURCES = ../tmp/inputs/lib_asm_noheap.s ../tmp/inputs/lib_asm_noheap.s
 DEST = ../tmp/outputs/result.s
 
 all: linker.class

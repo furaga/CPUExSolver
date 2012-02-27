@@ -19,34 +19,38 @@
 	
 	<!-- constTableType -->
 	<!-- ヒープ初期化部分と命令データを別ファイルに書き込む -->
-	<!-- constTableType 最初の1ﾊﾞｲﾄに初期ヒープサイズ -->
-	<!--  = 2 初期化部分が終わったら既定のビット列が来る -->
-	<binary endian="BIG" constTableType="writeSize" signal="0xffFFffFF" addressing="byte" direction="2"/>
+	<binary endian="BIG" constTableType="writeSize" tag="0xffFFffFF" addressing="byte" direction=""/>
 	
 	<!-- 固定する機能（命令形式など）はこのファイルには書かない（ミスリードになるから） -->
 	<!-- op, functともに６ビット(0 ~ 63) -->
-	<instructions SPECIAL="0" FPI="1" IO="2" forward="true">	
+	<instructions forward="true">
+		<CONST>
+			<SPECIAL value="0"/>
+			<FPI value="1"/>
+			<IO value="2"/>
+		</CONST>
 		<!-- ireg <- op ireg -->
-		<MOV name="mov" op="SPECIAL" funct="000" explain="値のコピー"/>
+		<MOV use="false" name="mov" op="SPECIAL" funct="0" explain="値のコピー"/>
 
 		<!-- regi op regi -->
-		<ADD name="add" op="SPECIAL" funct="001" explain="整数同士の足し算"/>
-		<SUB name="sub" op="SPECIAL" funct="002" explain="整数同士の引き算"/>
-		<MUL name="mul"  op="SPECIAL" funct="003" explain="整数同士の掛け算"/>
-		<DIV name="div"  op="SPECIAL" funct="004" explain="整数同士の割り算"/>
-		<SLL name="sll" op="SPECIAL" funct="005" explain="論理左シフト"/>
-		<SLA use="false" name="sla" op="SPECIAL" funct="006" explain="算術左シフト"/>
-		<SRL use="false" name="srl" op="SPECIAL" funct="007" explain="論理右シフト"/>
-		<SRA name="sra" op="SPECIAL" funct="008" explain="算術右シフト"/>
-		<AND use="false" name="and" op="SPECIAL" funct="009" explain="論理積"/>
-		<OR use="false" name="or" op="SPECIAL" funct="010" explain="論理和"/>
-		<NOT name="not" op="SPECIAL" funct="011" explain="論理否定"/>
-		<XOR use="false" name="xor" op="SPECIAL" funct="012" explain="排他的論理和"/>
+		<ADD name="add" op="SPECIAL" funct="1" explain="整数同士の足し算"/>
+		<SUB name="sub" op="SPECIAL" funct="2" explain="整数同士の引き算"/>
+		<MUL name="mul"  op="SPECIAL" funct="3" explain="整数同士の掛け算"/>
+		<DIV name="div"  op="SPECIAL" funct="4" explain="整数同士の割り算"/>
+		<SLL name="sll" op="SPECIAL" funct="5" explain="論理左シフト"/>
+		<SLA use="false" name="sla" op="SPECIAL" funct="6" explain="算術左シフト"/>
+		<SRL use="false" name="srll" op="SPECIAL" funct="7" explain="論理右シフト"/>
+		<SRA name="srl" op="SPECIAL" funct="8" explain="算術右シフト"/>
+		<AND use="false" name="and" op="SPECIAL" funct="9" explain="論理積"/>
+		<OR use="false" name="or" op="SPECIAL" funct="10" explain="論理和"/>
+		<NOR name="nor" op="SPECIAL" funct="50" explain="論理和"/>
+		<XOR use="false" name="xor" op="SPECIAL" funct="12" explain="排他的論理和"/>
+		<NOT name="not" op="SPECIAL" funct="11" explain="論理否定"/>
 
 		<!-- regi op imm -->
 		<ADDI name="addi" op="3" explain="整数同士の足し算(即値)"/>
 		<SUBI name="subi" op="4" explain="整数同士の引き算(即値)"/>
-		<MULI use="false" name="muli" op="5" explain="整数同士の掛け算(即値)"/>
+		<MULI name="muli" op="5" explain="整数同士の掛け算(即値)"/>
 		<DIVI use="false" name="divi" op="6" explain="整数同士の割り算(即値)"/>
 		<SLLI name="slli" op="7" explain="論理左シフト(即値)"/>
 		<SLAI use="false" name="slai" op="8" explain="算術左シフト(即値)"/>
@@ -54,12 +58,13 @@
 		<SRAI name="srli" op="10" explain="算術右シフト(即値)"/>
 		<ANDI use="false" name="andi" op="11" explain="論理積(即値)"/>
 		<ORI use="false" name="ori" op="12" explain="論理和(即値)"/>
+		<NORI use="false" name="nori" op="50" explain="論理和(即値)"/>
 		<XORI use="false" name="xori" op="13" explain="排他的論理和(即値)"/>
 
 		<!-- regf op regf -->
-		<FADD name="fadd" op="FPI" funct="000" explain="浮動小数点数同士の足し算"/>
-		<FSUB name="fsub" op="FPI" funct="001" explain="浮動小数点数同士の引き算"/>
-		<FMUL name="fmul" op="FPI" funct="002" explain="浮動小数点数同士の掛け算"/>
+		<FADD name="fadd" op="FPI" funct="0" explain="浮動小数点数同士の足し算"/>
+		<FSUB name="fsub" op="FPI" funct="1" explain="浮動小数点数同士の引き算"/>
+		<FMUL name="fmul" op="FPI" funct="2" explain="浮動小数点数同士の掛け算"/>
 		<FDIV name="fdiv" op="FPI" funct="3" explain="浮動小数点数同士の割り算"/>
 
 		<!-- op regf -->
@@ -90,25 +95,25 @@
 
 		<!-- branch -->
 		<BRANCH name="jmp" op="18" explain="無条件分岐"/>
-		<BEQ name="jeq" op="19" explain="条件分岐(=)"/>
-		<BNE name="jne" op="20" explain="条件分岐(＜＞)"/>
-		<BLT name="jlt" op="21" explain="条件分岐(＜)"/>
-		<BLE use="false" name="jle" op="22" explain="条件分岐(＜=)"/>
-		<BGT use="false" name="jgt" op="23" explain="条件分岐(＞)"/>
-		<BGE use="false" name="jge" op="24" explain="条件分岐(＜=)"/>
+		<BEQ name="jeq" op="19" addressMode="relative" explain="条件分岐(=)"/>
+		<BNE name="jne" op="20" addressMode="relative" explain="条件分岐(＜＞)"/>
+		<BLT name="jlt" op="21" addressMode="relative" explain="条件分岐(＜)"/>
+		<BLE use="false" name="jle" addressMode="relative" op="22" explain="条件分岐(＜=)"/>
+		<BGT use="false" name="jgt" addressMode="relative" op="23" explain="条件分岐(＞)"/>
+		<BGE use="false" name="jge" addressMode="relative" op="24" explain="条件分岐(＜=)"/>
 
 		<!-- branch float -->
-		<FBEQ name="fjeq" op="25" explain="浮動小数の条件分岐(=)"/>
-		<FBNE name="fjne" op="26" explain="浮動小数の条件分岐(＜＞)"/>
-		<FBLT name="fjlt" op="27" explain="浮動小数の条件分岐(＜)"/>
-		<FBLE use="false" formBin="I" op="28" explain="浮動小数の条件分岐(＜=)"/>
-		<FBGT use="false" name="fjgt" op="29" explain="浮動小数の条件分岐(＞)"/>
-		<FBGE use="false" name="fjge" op="30" explain="浮動小数の条件分岐(＞=)"/>
+		<FBEQ name="fjeq" op="25" addressMode="relative" explain="浮動小数の条件分岐(=)"/>
+		<FBNE name="fjne" op="26" addressMode="relative" explain="浮動小数の条件分岐(＜＞)"/>
+		<FBLT name="fjlt" op="27" addressMode="relative" explain="浮動小数の条件分岐(＜)"/>
+		<FBLE use="false" name="fjle" op="28" addressMode="relative" explain="浮動小数の条件分岐(＜=)"/>
+		<FBGT use="false" name="fjgt" op="29" addressMode="relative" explain="浮動小数の条件分岐(＞)"/>
+		<FBGE use="false" name="fjge" op="30" addressMode="relative" explain="浮動小数の条件分岐(＞=)"/>
 
 		<!-- jmp, call, return -->
-		<JMPREG name="b" op="SPECIAL" funct="013" explain="レジスタの値へジャンプ"/>
+		<JMPREG name="b" op="SPECIAL" funct="13" explain="レジスタの値へジャンプ"/>
 		<CALL name="call" op="31" explain="関数呼び出し"/>
-		<CALLREG name="callr" op="SPECIAL" funct="014" explain="クロージャ呼び出し"/>
+		<CALLREG name="callR" op="SPECIAL" funct="14" explain="クロージャ呼び出し"/>
 		<RETURN name="return" op="32" explain="関数呼び出しから返る"/>
 
 		<!-- memory access -->
@@ -127,28 +132,27 @@
 		<INPUTFLOAT use="false" name="inputf" op="IO" funct="2" explain="4バイトを浮動小数レジスタ入力"/>
 		<OUTPUTBYTE name="output" op="IO" funct="3" explain="下位１バイトを出力"/>
 		<OUTPUTWORD use="false" name="outputw" op="IO" funct="4" explain="整数レジスタ4バイトを出力"/>
-		<INPUTFLOAT use="false" name="outputf" op="IO" funct="5" explain="浮動小数レジスタ4バイトを出力"/>
+		<OUTPUTFLOAT use="false" name="outputf" op="IO" funct="5" explain="浮動小数レジスタ4バイトを出力"/>
 
 		<!-- others -->
-		<HALT name="halt" op="SPECIAL" funct="015" explain="プログラム終了"/>
-		<NOP name="nop" op="SPECIAL" funct="016" expain="なにもしない"/>
+		<HALT name="halt" op="SPECIAL" funct="15" explain="プログラム終了"/>
 
 		<!-- mnemonic -->
 		<mnemonics>
-			<NOP>
-				<inst>"add\t%%g0, %%g0, %%g0"</inst>
+			<NOP name="nop" size="1" formAsm="">
+				<inst command="&quot;add\t%%g0, %%g0, %%g0&quot;"/>
 			</NOP>
-			<MOV>
-				<inst>"add\t%%g%d, %%g%d, %%g0", rd, rs</inst>
+			<MOV name="mov" size="1" formAsm="RR">
+				<inst command="&quot;add\t%%g%d, %%g%d, %%g0&quot;, rt, rs"/>
 			</MOV>
-			<NOT>
-				<inst>"nor\t%%g%d, %%g%d, %%g0", rd, rs, rs</inst>
+			<NOT use="false" name="not" size="1" formAsm="RR">
+				<inst command="&quot;nor\t%%g%d, %%g%d, %%g0&quot;, rt, rs, rs" />
 			</NOT>
-			<NEG use="false">
-				<inst>"sub\t%%g%d, %%g0, %%g%d", rd, rs</inst>
+			<NEG name="neg" size="1" formAsm="RR">
+				<inst command="&quot;sub\t%%g%d, %%g0, %%g%d&quot;, rt, rs"/>
 			</NEG>
-			<SETL>
-				<inst>"addi\t%%g%d, %%g0, %%s", rd, label</inst>
+			<SETL name="setL" size="1" formAsm="RL">
+				<inst useLabel="true" command="&quot;addi\t%%g%d, %%g0, 0&quot;, rs"/>
 			</SETL>
 		</mnemonics>
 	</instructions>

@@ -1,0 +1,446 @@
+<%
+	binary = xmlroot.find(".//binary")
+	constTableType = binary.get("constTableType")
+	constTableTag = binary.get("tag", "0xffFFffFF")
+	addressing = binary.get("addressing")
+	
+	zeroReg = xmlroot.find(".//zeroReg").get("index")
+	assert zeroReg.isdigit(), "zeroReg is not digit"
+
+	frameReg = xmlroot.find(".//frameReg").get("index")
+	assert frameReg is not None, "frameReg is None"
+	assert frameReg.isdigit(), "frameReg is not digit"
+
+	heapReg = xmlroot.find(".//heapReg").get("index")
+	assert heapReg is not None, "heapReg is None"
+	assert heapReg.isdigit(), "heapReg is not digit"
+
+	globalReg = xmlroot.find(".//globalReg").get("index")
+	assert globalReg is not None, "globalReg is None"
+	assert globalReg.isdigit(), "globalReg is not digit"
+
+	linkReg = xmlroot.find(".//linkReg").get("index")
+	assert linkReg is not None, "linkReg is None"
+	## リンクレジスタのindexが整数でないときは専用レジスタを使用する
+	
+	def getInst(type):
+		inst = xmlroot.find(".//" + type)
+		assert inst is not None, "inst is None(" + type + ")"
+		return inst
+	
+	def getName(type):
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+	
+	def getOp(type):
+		t_op = getInst(type).get("op")
+		t_op is not None, "name is None(" + type + ")"
+		return getName(type).upper() if t_op.isdigit() else t_op
+			
+	def getFunct(type):
+		return getName(type).upper() + "_F"
+
+	def isUse(type):
+		use = getInst(type).get("use", "true")
+		return use != "false"
+			
+	def getInstsByOp(op):
+		return filter(lambda inst: isUse(inst["type"]) and getOp(inst["type"]) == op, instInfo)
+
+	def getInstsWithoutConstOp():
+		return filter(lambda inst: isUse(inst["type"]) and getInst(inst["type"]).get("op", "0").isdigit(), instInfo)
+
+	constOps = xmlroot.find(".//CONST")
+	
+	endian = xmlroot.find(".//binary").get("endian")
+	assert endian is not None, "endian is None"
+%>#include "../dst/assembler/common.h"
+#include <cmath>
+#include <fcntl.h>
+
+// 命令の各要素にアクセスする関数を定義
+${"""#define DEF_ELE_GET(name, shift, mask) \\
+	uint32_t name(uint32_t inst) {\\
+		return ((inst >> shift) & mask);\\
+	}"""}
+DEF_ELE_GET(get_opcode, 26, 0x3f)
+DEF_ELE_GET(get_rs, 21, 0x1f)
+DEF_ELE_GET(get_rt, 16, 0x1f)
+DEF_ELE_GET(get_rd, 11, 0x1f)
+DEF_ELE_GET(get_shamt, 6, 0x1f)
+DEF_ELE_GET(get_funct, 0, 0x3f)
+DEF_ELE_GET(get_address, 0, 0x3ffffff)
+int32_t get_imm(uint32_t inst)
+{
+ 	if (inst & (1 << 15))
+ 	{
+		// 即値は負の数のとき符号拡張する
+ 		return (0xffff << 16) | (inst & 0xffff);
+ 	}
+	return inst & 0xffff;
+}
+
+//------------------------------------------------------------------
+
+// 整数レジスタ
+int32_t ireg[INTREG_NUM];
+// 浮動小数レジスタ
+uint32_t freg[INTREG_NUM];
+% if not linkReg.isdigit():
+## 特別にリンクレジスタを用意する場合
+// リンクレジスタ
+uint32_t lreg;
+% endif
+
+// 即値
+#define IMM get_imm(inst)
+// rs（整数レジスタ）
+#define IRS ireg[get_rs(inst)]
+// rt（整数レジスタ）
+#define IRT ireg[get_rt(inst)]
+// rd（整数レジスタ）
+#define IRD ireg[get_rd(inst)]
+// rs（浮動小数レジスタ）
+#define FRS freg[get_rs(inst)]
+// rt（浮動小数レジスタ）
+#define FRT freg[get_rt(inst)]
+// rd（浮動小数レジスタ）
+#define FRD freg[get_rd(inst)]
+// フレームレジスタ
+#define ZR ireg[${zeroReg}] 
+// ヒープレジスタ
+#define FR ireg[${frameReg}]
+// ゼロレジスタ
+#define HR ireg[${heapReg}]
+// リンクレジスタ
+#define LR ${"ireg[" + linkReg + "]" if linkReg.isdigit() else "lreg"}
+// グローバルレジスタ
+#define GR ireg[${globalReg}]
+
+//------------------------------------------------------------------
+
+// アドレスをバイト/ワードアドレッシングに応じて変換
+#define addr(x) (x${"" if addressing == "byte" else "/*"} / 4${"" if addressing == "byte" else "*/"})
+#define ADDRESSING_UNIT	${"4" if addressing == "byte" else "1"}
+
+//------------------------------------------------------------------
+
+// 停止命令か
+#define isHalt(opcode, funct) (opcode == ${getOp("HALT")} && funct == ${getFunct("HALT")})
+
+// 発行命令数
+long long unsigned cnt;
+
+// ROM
+uint32_t ROM[ROM_NUM];
+// RAM
+uint32_t RAM[(int)(RAM_NUM * 1024 * 1024 / 4)];
+// プログラムカウンタ
+uint32_t pc;
+
+typedef union{	uint32_t i; float f;} conv;
+
+uint32_t myfadd(uint32_t rs, uint32_t rt)
+{
+	conv a, b, c;
+	a.i = rs;
+	b.i = rt;
+	c.f = a.f + b.f;
+	return c.i;
+}
+uint32_t myfsub(uint32_t rs, uint32_t rt)
+{
+	conv a, b, c;
+	a.i = rs;
+	b.i = rt;
+	c.f = a.f - b.f;
+	return c.i;
+}
+uint32_t myfmul(uint32_t rs, uint32_t rt)
+{
+	conv a, b, c;
+	a.i = rs;
+	b.i = rt;
+	c.f = a.f * b.f;
+	return c.i;
+}
+uint32_t myfdiv(uint32_t rs, uint32_t rt)
+{
+	conv a, b, c;
+	a.i = rs;
+	b.i = rt;
+	c.f = a.f / b.f;
+	return c.i;
+}
+uint32_t myfinv(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = 1 / a.f;
+	return b.i;
+}
+uint32_t myfsqrt(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = sqrt(a.f);
+	return b.i;
+}
+uint32_t myfabs(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = abs(a.f);
+	return b.i;
+}
+uint32_t myfneg(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = -a.f;
+	return b.i;
+}
+uint32_t myfloor(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = floor(a.f);
+	return b.i;
+}
+uint32_t myfsin(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = sin(a.f);
+	return b.i;
+}
+uint32_t myfcos(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = cos(a.f);
+	return b.i;
+}
+uint32_t myftan(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = tan(a.f);
+	return b.i;
+}
+uint32_t myfatan(uint32_t rs)
+{
+	conv a, b;
+	a.i = rs;
+	b.f = atan(a.f);
+	return b.i;
+}
+float asF(uint32_t r)
+{
+	conv a;
+	a.i = r;
+	return a.f;
+}
+
+//-----------------------------------------------------------------------------
+//
+// エンディアンの変換
+//
+//-----------------------------------------------------------------------------
+uint32_t endian(uint32_t data, bool isBig)
+{
+    // デフォルトではリトルエンディアンなので、
+    // ビッグエンディアンが選択されたときに切り替える
+    if (isBig)
+    {
+        return (data << 24) | ((data << 8) & 0x00ff0000) | ((data >> 8) & 0x0000ff00) | ((data >> 24) & 0x000000ff);
+    }
+    return data;
+}
+
+% if constTableType != "no_use":
+//-----------------------------------------------------------------------------
+//
+// 定数テーブルをヒープに書き込む
+//
+//-----------------------------------------------------------------------------
+void initializeHeap()
+{
+	% if constTableType == "writeSize":
+
+	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
+	int heapSize = endian(ROM[0], ${"true" if endian == "BIG" else "false"});
+	pc += ADDRESSING_UNIT;
+	cerr << "heapSize = " << heapSize << endl;
+	while (heapSize > 0)
+	{
+		RAM[addr(HR)] = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
+		HR += ADDRESSING_UNIT;
+		heapSize -= ADDRESSING_UNIT;
+		pc += ADDRESSING_UNIT;
+	}
+
+	% elif constTableType == "toTag":
+
+	// constTableTagが来るまでを定数テーブルとする
+	while (endian(ROM[addr(pc)], ${"true" if endina == "BIG" else "false"}) != ${constTableTag})
+	{
+		RAM[addr(HR)] = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
+		HR += ADDRESSING_UNIT;
+		pc += ADDRESSING_UNIT;
+	}
+	% endif
+}
+
+% endif
+//-----------------------------------------------------------------------------
+//
+// シミュレート
+//
+//-----------------------------------------------------------------------------
+int simulate(char* srcPath)
+{
+	uint32_t inst;
+
+	uint8_t opcode, funct;
+
+	// 初期化
+	FR = GR = sizeof(RAM)${" - 4" if addressing == "byte" else " / 4 - 1"};
+	// cerr << "FR = GR = " << FR << endl;
+
+	// バイナリを読み込む
+/*	FILE* srcFile = fopen(srcPath, "rb");
+	if (srcFile == NULL)
+	{
+		cerr << "couldn't open " << srcPath << endl;
+		return 1;
+	}
+	fread(ROM, 4 * ROM_NUM, 1, srcFile);
+	fclose(srcFile);
+*/
+	int fd = open(srcPath, O_RDONLY);
+	if (fd < 0)
+	{
+		cerr << "couldn't open " << srcPath << endl;
+		return 1;
+	}
+	read(fd, ROM, ROM_NUM * 4);
+	close(fd);
+	
+	cerr << srcPath << endl;
+
+	// ヒープの初期化
+	initializeHeap();
+
+	// メインループ
+	do
+	{
+		bool error = false;
+		
+		ZR = 0;
+##		cerr << "FR = " << FR << ", HR = " << HR << endl;
+
+		// フレーム/ヒープレジスタは絶対に負になることはない
+		if (FR < 0)
+		{
+			cerr << "error> Frame Register(reg[" << ${frameReg} << "]) has become less than 0." << endl;
+			break;
+		}
+		if(HR < 0) 
+		{
+			cerr << "error> Heap Register(reg[" << ${heapReg} << "]) has become less than 0." << endl;
+			break;
+		}
+
+		inst = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
+		
+##		cerr << "pc = " << pc;
+##		cerr << ", inst = " << inst;		
+		opcode = get_opcode(inst);
+##		cerr << ", opcode = " << (int)opcode;
+		funct = get_funct(inst);
+##		cerr << ", funct = " << (int)funct << endl;
+		cnt++;
+		pc += ADDRESSING_UNIT;
+
+		// 1億命令発行されるごとにピリオドを一個ずつ出力する（どれだけ命令が発行されたか視覚的にわかりやすくなる）
+		if (!(cnt % (10000 * 10000)))
+		{
+			cerr << "." << flush;
+		}
+		
+		// 読み込んだopcode・functに対応する命令を実行する
+		// TODO
+		switch(opcode)
+		{
+% for constOp in constOps.getiterator()[1:]:
+			case ${constOp.tag}:
+				switch (funct)
+				{
+	% for inst in getInstsByOp(constOp.tag):
+					case ${getName(inst["type"]).upper()}_F:
+##						cerr << "${getName(inst["type"])} " << endl;
+##						cerr << "\trs = " << get_rs(inst) << ", " << IRS << endl;
+##						cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
+##						cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
+##						cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
+##						cerr << "\taddr = " << get_address(inst) << endl;
+		% for code in inst["code"]:
+						${code};
+		% endfor
+##						cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
+##						cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
+##						cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
+						break;
+	% endfor
+					// TODO
+					default:
+						break;
+				}			
+				break;
+% endfor
+			// TODO
+% for inst in getInstsWithoutConstOp():
+			case ${getName(inst["type"]).upper()}:
+##				cerr << "${getName(inst["type"])} " << endl;
+##				cerr << "\trs = " << get_rs(inst) << ", " << IRS << endl;
+##				cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
+##				cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
+##				cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
+##				cerr << "\taddr = " << get_address(inst) << endl;
+	% for code in inst["code"]:
+				${code};
+	% endfor
+##				cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
+##				cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
+##				cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
+				break;
+% endfor
+			default:
+				cerr << "invalid opcode. (opcode = " << opcode << ", funct = " << funct <<  ")" << endl;
+				break;
+		}
+	}
+	while (!isHalt(opcode, funct)); // ${xmlroot.find(".//HALT").get("name")}が来たら終了
+
+	// 発行命令数を表示
+	cerr << "\n" << cnt << " instructions had been issued" << endl;
+
+	return 0;
+} 
+
+int main(int argc, char** argv)
+{
+	if (argc <= 1)
+	{
+		cerr << "usage: ./simulator binaryfile" << endl;
+		return 1;
+	}
+	
+	cerr << "<simulate> ";
+	
+	simulate(argv[1]);
+
+	return 0;
+}

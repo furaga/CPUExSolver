@@ -1,0 +1,17 @@
+# Makefile.in
+CC = g++
+CXX = g++
+LD = g++
+RM = rm -f
+CFLAGS = -O3 -funroll-loops
+CXXFLAGS = -O3 -funroll-loops
+LDFLAGS = -O3 -lm
+
+RENDERER=../renderer.py
+CONFIGFILE=../architecture.xml
+
+DSTDIR = ../dst
+COMDIR = $(DSTDIR)/compiler
+LNKDIR = $(DSTDIR)/linker
+ASMDIR = $(DSTDIR)/assembler
+SIMDIR = $(DSTDIR)/simulator

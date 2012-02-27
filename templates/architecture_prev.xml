@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<architecture name="IKA">
+	<!-- powerPCみたいな条件分岐葉できない -->
+	<!-- デバッグ用のシミュレータ専用命令は班によってまちまちすぎるだろうからあまり対応できてない -->
+
+	<!-- iregNum: 整数レジスタの数(4以上32以下) -->
+	<!-- fregNum: 浮動小数レジスタの数(0以上32以下) -->
+	<!-- iregPrefix: 整数レジスタの接頭辞 -->
+	<!-- fregPrefix: 浮動小数レジスタの接頭辞 -->
+	<!-- sp: スタックポインタのレジスタ番号 -->
+	<!-- hp: ヒープポインタのレジスタ番号 -->
+	<!-- zero: ゼロレジスタのレジスタ番号 -->
+	<!-- one: １固定レジスタのレジスタ番号 -->
+	<!-- mone: -1固定レジスタのレジスタ番号 -->
+	<!-- glb: グローバルレジスタのレジスタ番号 -->
+	<!-- fregFixNum: %f(fregNum - fregFixNum - 1) から%f(fregNum - 1)までを定数用のレジスタとしてコンパイラ内で扱う -->
+	<registers iregNum="32" fregNum="32" iregPrefix="%%g" fregPrefix="%%f" sp="1" hp="2" zero="0" one="28" mone="29" lnk="" glb="31" fregFixNum="16"/>
+
+	<!-- unit: "byte"ならバイトアドレッシング、さもなくばワードアドレッシング -->
+	<!-- type: "0"なら上向き正、"1"なら下向き正,"2"なら即値版ロード・ストアのみ下向き正 -->
+	<addressing unit="byte" type="2"/>
+
+	<!-- size: RAMのサイズ(MB)-->
+	<ram size="8.0" />
+
+	<assembly comment="!">
+		<!-- pos: 0     ー＞ op rd rs rt -->
+		<!--      0以外 ー＞ op rs rt rd -->
+		<result pos="0"/>
+	</assembly>
+
+	<!-- endian : BIG or LITTLE -->
+	<binary endian="BIG"/>
+
+	<!-- use : この命令を使用するか -->
+	<!-- name : アセンブリにしたときの命令名 -->
+	<!-- format : 命令形式（R/I/J/M。Mはニーモニックを表す） -->
+	<!-- op : opコード -->
+	<!-- funct : functコード -->
+	<!-- expain : 命令の説明 -->
+	<instructions>
+		<!-- ireg <- op ireg -->
+		<MOV name="mov" formAsm="RR" formBin="R" op="" funct="" explain="値のコピー"/>
+
+		<!-- regi op regi -->
+		<ADD name="add" formAsm="RRR" formBin="R" op="" funct="" explain="整数同士の足し算"/>
+		<SUB name="sub" formAsm="RRR" formBin="R" op="" funct="" explain="整数同士の引き算"/>
+		<MUL use="false" name="mul" formAsm="RRR" formBin="R" op="" funct="" explain="整数同士の掛け算"/>
+		<DIV use="false" name="div" formAsm="RRR" formBin="R" op="" funct="" explain="整数同士の割り算"/>
+		<SLL name="sll" formAsm="RRR" formBin="R" op="" funct="" explain="論理左シフト"/>
+		<SLA use="false" name="sla" formAsm="RRR" formBin="R" op="" funct="" explain="算術左シフト"/>
+		<SRL use="false" name="srl" formAsm="RRR" formBin="R" op="" funct="" explain="論理右シフト"/>
+		<SRA name="sra" formAsm="RRR" formBin="R" op="" funct="" explain="算術右シフト"/>
+		<AND use="false" name="and" formAsm="RRR" formBin="R" op="" funct="" explain="論理積"/>
+		<OR use="false" name="or" formAsm="RRR" formBin="R" op="" funct="" explain="論理和"/>
+		<NOT name="not" formAsm="" formBin="R" op="" funct="" explain="論理否定"/>
+		<XOR use="false" name="xor" formAsm="RRR" formBin="R" op="" funct="" explain="排他的論理和"/>
+
+		<!-- regi op imm -->
+		<ADDI name="addi" formAsm="RRI" formBin="I" op="" funct="" explain="整数同士の足し算(即値)"/>
+		<SUBI name="subi" formAsm="RRI" formBin="I" op="" funct="" explain="整数同士の引き算(即値)"/>
+		<MULI use="false" name="muli" formAsm="RRI" formBin="I" op="" funct="" explain="整数同士の掛け算(即値)"/>
+		<DIVI use="false" name="divi" formAsm="RRI" formBin="I" op="" funct="" explain="整数同士の割り算(即値)"/>
+		<SLLI name="slli" formAsm="RRI" formBin="I" op="" funct="" explain="論理左シフト(即値)"/>
+		<SLAI use="false" name="slai" formAsm="RRI" formBin="I" op="" funct="" explain="算術左シフト(即値)"/>
+		<SRLI use="false" name="srlli" formAsm="RRI" formBin="I" op="" funct="" explain="論理右シフト(即値)"/>
+		<SRAI name="srli" formAsm="" formBin="I" op="RRI" explain="算術右シフト(即値)"/>
+		<ANDI use="false" name="andi" formAsm="RRI" formBin="I" op="" explain="論理積(即値)"/>
+		<ORI use="false" name="ori" formAsm="RRI" formBin="I" op="" explain="論理和(即値)"/>
+		<XORI use="false" name="xori" formAsm="RRI" formBin="I" op="" explain="排他的論理和(即値)"/>
+
+		<!-- regf op regf -->
+		<FADD name="fadd" formAsm="FFF" formBin="R" op="" funct="" explain="浮動小数点数同士の足し算"/>
+		<FSUB name="fsub" formAsm="FFF" formBin="R" op="" funct="" explain="浮動小数点数同士の引き算"/>
+		<FMUL name="fmul" formAsm="FFF" formBin="R" op="" funct="" explain="浮動小数点数同士の掛け算"/>
+		<FDIV name="fdiv" formAsm="FFF" formBin="R" op="" funct="" explain="浮動小数点数同士の割り算"/>
+
+		<!-- op regf -->
+		<FINV use="false" name="finv" formAsm="FF" formBin="R" op="" funct="" explain="浮動小数点数の逆数"/>
+		<FSQRT name="fsqrt" formAsm="FF" formBin="R" op="" funct="" explain="浮動小数点数の平方根"/>
+		<FABS name="fabs" formAsm="FF" formBin="R" op="" funct="" explain="浮動小数点数の絶対値"/>
+		<FMOV name="fmov" formAsm="FF" formBin="R" op="" funct="" explain="memcpy"/>
+		<FNEG name="fneg" formAsm="FF" formBin="R" op="" funct="" explain="浮動小数点数の符号反転"/>
+		<FLOOR use="false" name="floor" formAsm="FF" formBin="R" op="" funct="" explain="浮動小数点数同士の割り算"/>
+		<FSIN use="false" name="fsin" formAsm="FF" formBin="R" op="" funct="" explain="正弦"/>
+		<FCOS use="false" name="fcos" formAsm="FF" formBin="R" op="" funct="" explain="余弦"/>
+		<FTAN use="false" name="ftan" formAsm="FF" formBin="R" op="" funct="" explain="正接"/>
+		<FATAN use="false" name="fatan" formAsm="FF" formBin="R" op="" funct="" explain="逆正接"/>
+
+		<!-- ireg <- op ireg-->
+		<ITOF use="false" name="itof" formAsm="FR" formBin="R" op="" funct="" explain="int_of_float"/>
+		<IMOVF use="false" name="imvf" formAsm="FR" formBin="R" op="" funct="" explain="memcpy"/>
+
+		<!-- freg <- op ireg-->
+		<FTOI use="false" name="ftoi" formAsm="RF" formBin="R" op="" funct="" explain="float_of_int"/>
+		<FMOVI use="false" name="fmvi" formAsm="RF" formBin="R" op="" funct="" explain="memcpy"/>
+
+		<!-- assign -->
+		<ASSIGNLO name="mvlo" formAsm="RI" formBin="I" op="" funct="" explain="整数レジスタ下位16ビットに即値代入"/>
+		<ASSIGNHI name="mvhi" formAsm="RI" formBin="I" op="" funct="" explain="整数レジスタ上位16ビットに即値代入"/>
+		<FASSIGNLO use="false" name="fmvlo" formAsm="FI" formBin="I" op="" funct="" explain="浮動小数レジスタ下位16ビットに即値代入"/>
+		<FASSIGNHI use="false" name="fmvhi" formAsm="FI" formBin="I" op="" funct="" explain="浮動小数レジスタ上位16ビットに即値代入"/>
+
+		<!-- branch -->
+		<BRANCH name="jmp" formAsm="L" formBin="J" op="" funct="" explain="無条件分岐"/>
+		<BEQ name="jeq" formAsm="RRL" formBin="I" op="" funct="" explain="条件分岐(=)"/>
+		<BNE name="jne" formAsm="RRL" formBin="I" op="" funct="" explain="条件分岐(＜＞)"/>
+		<BLT name="jlt" formAsm="RRL" formBin="I" op="" funct="" explain="条件分岐(＜)"/>
+		<BLE use="false" name="jle" formAsm="RRL" formBin="I" op="" funct="" explain="条件分岐(＜=)"/>
+		<BGT use="false" name="jgt" formAsm="RRL" formBin="I" op="" funct="" explain="条件分岐(＞)"/>
+		<BGE use="false" name="jge" formAsm="RRL" formBin="I" op="" funct="" explain="条件分岐(＜=)"/>
+
+		<!-- branch float -->
+		<FBEQ name="fjeq" formAsm="FFL" formBin="I" op="" funct="" explain="浮動小数の条件分岐(=)"/>
+		<FBNE name="fjne" formAsm="FFL" formBin="I" op="" funct="" explain="浮動小数の条件分岐(＜＞)"/>
+		<FBLT name="fjlt" formAsm="FFL" formBin="I" op="" funct="" explain="浮動小数の条件分岐(＜)"/>
+		<FBLE use="false" name="fjle" formAsm="FFL" formBin="I" op="" funct="" explain="浮動小数の条件分岐(＜=)"/>
+		<FBGT use="false" name="fjgt" formAsm="FFL" formBin="I" op="" funct="" explain="浮動小数の条件分岐(＞)"/>
+		<FBGE use="false" name="fjge" formAsm="FFL" formBin="I" op="" funct="" explain="浮動小数の条件分岐(＞=)"/>
+
+		<!-- jmp, call, return -->
+		<JMPREG name="b" formAsm="R" formBin="R" op="" funct="" explain="レジスタの値へジャンプ"/>
+		<CALL name="call" formAsm="L" formBin="J" op="" funct="" explain="関数呼び出し"/>
+		<CALLREG name="callr" formAsm="R" formBin="R" op="" funct="" explain="クロージャ呼び出し"/>
+		<RETURN name="return" formAsm="" formBin="" op="" funct="" explain="関数呼び出しから返る"/>
+
+		<!-- memory access -->
+		<ST name="st" formAsm="RRR" formBin="R" op="" explain="整数ストア"/>
+		<LD name="ld" formAsm="RRR" formBin="R" op="" explain="整数ロード"/>
+		<FST name="fst" formAsm="FRR" formBin="R" op="" explain="浮動小数ストア"/>
+		<FLD name="fld" formAsm="FRR" formBin="R" op="" explain="浮動小数ロード"/>
+		<STI name="sti" formAsm="RRI" formBin="I" op="" explain="整数ストア(即値)"/>
+		<LDI name="ldi" formAsm="RRI" formBin="I" op="" explain="整数ロード(即値)"/>
+		<FSTI name="fsti" formAsm="FRI" formBin="I" op="" explain="浮動小数ストア(即値)"/>
+		<FLDI name="fldi" formAsm="FRI" formBin="I" op=""  explain="浮動小数ロード(即値)"/>
+
+		<!-- I/O -->
+		<INPUTBYTE name="input" formAsm="R" formBin="R" op="" funct="" explain="１バイトを整数レジスタ入力"/>
+		<INPUTWORD use="false" name="inputw" formAsm="R" formBin="R" op="" funct="" explain="4バイトを整数レジスタに入力"/>
+		<INPUTFLOAT use="false" name="inputf" formAsm="F" formBin="R" op="" funct="" explain="4バイトを浮動小数レジスタ入力"/>
+		<OUTPUTBYTE name="output" formAsm="R" formBin="R" op="" funct="" explain="下位１バイトを出力"/>
+		<OUTPUTWORD use="false" name="outputw" formAsm="R" formBin="R" op="" funct="" explain="整数レジスタ4バイトを出力"/>
+		<INPUTFLOAT use="false" name="outputf" formAsm="F" formBin="R" op="" funct="" explain="浮動小数レジスタ4バイトを出力"/>
+
+		<!-- others -->
+		<HALT name="halt" formAsm="" formBin="R" op="" funct="" explain="プログラム終了"/>
+		<NOP name="nop" formAsm="" formBin="R" op="" funct="" expain="なにもしない"/>
+
+		<!-- mnemonic -->
+		<NEG use="false" name="neg" formAsm="R" formBin="M" explain="neg rt rs => rt = 0 - rs"/>
+		<SETL name="setL" formAsm="RL" formBin="M" explain="setL rt Label => add rt %g0 LABEL"/>
+	</instructions>
+</architecture>

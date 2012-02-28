@@ -139,7 +139,7 @@ bool readHeapData()
 			{
 				// l.0000: ! ヒープのラベル
 				str = strtok(buffer, ":");
-				labels[str] = (binaries.size() - 1) * 4;
+				labels[str] = (binaries.size() - 1)${" * 4" if addressing == "byte" else ""};
 			}
 			else
 			{

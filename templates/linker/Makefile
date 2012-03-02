@@ -1,19 +1,15 @@
-LINKER = linker
-RENDERER = ../renderer.py
-CONFIGFILE = ../architecture.xml
+include ../Makefile.in
 
-# デフォルトではテスト用のファイルが使われる 
-SOURCES = ../tmp/inputs/lib_asm.s ../tmp/inputs/__temp__.s
-#SOURCES = ../tmp/inputs/lib_asm_noheap.s ../tmp/inputs/lib_asm_noheap.s
-DEST = ../tmp/outputs/result.s
-
-all: linker.class
-	java $(LINKER) $(SOURCES) $(DEST)
+all: $(LNKDIR)/linker.class $(LNKDIR)/Makefile
 	
-$(LINKER).class: $(CONFIGFILE) $(LINKER).java.tmpl
-	python $(RENDERER) $(CONFIGFILE) $(LINKER).java.tmpl > $(LINKER).java
-	javac $(LINKER).java
+$(LNKDIR)/linker.class: $(RENDERER) $(CONFIGFILE) linker.java.tmpl
+	python $(RENDERER) $(CONFIGFILE) linker.java.tmpl > $(LNKDIR)/linker.java
+	javac $(LNKDIR)/linker.java
+
+$(LNKDIR)/Makefile: $(RENDERER) $(CONFIGFILE) Makefile.tmpl
+	python $(RENDERER) $(CONFIGFILE) Makefile.tmpl > $@
 
 clean:
-	rm *.class
-	rm *.java
+	$(RM) $(LNKDIR)/*.class
+	$(RM) $(LNKDIR)/*.java
+	$(RM) $(LNKDIR)/Makefile

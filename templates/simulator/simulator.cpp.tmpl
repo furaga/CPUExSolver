@@ -1,4 +1,6 @@
 <%
+	debug_flg = False
+
 	binary = xmlroot.find(".//binary")
 	constTableType = binary.get("constTableType")
 	constTableTag = binary.get("tag", "0xffFFffFF")
@@ -55,7 +57,7 @@
 	
 	endian = xmlroot.find(".//binary").get("endian")
 	assert endian is not None, "endian is None"
-%>#include "../dst/assembler/common.h"
+%>#include "../include/common.h"
 #include <cmath>
 #include <fcntl.h>
 
@@ -272,7 +274,7 @@ void initializeHeap()
 	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
 	int heapSize = endian(ROM[0], ${"true" if endian == "BIG" else "false"});
 	pc += ADDRESSING_UNIT;
-	cerr << "heapSize = " << heapSize << endl;
+	##cerr << "heapSize = " << heapSize << endl;
 	while (heapSize > 0)
 	{
 		RAM[addr(HR)] = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
@@ -337,7 +339,9 @@ int simulate(char* srcPath)
 	do
 	{
 		bool error = false;
-		
+	
+	##	cerr << "reg_bottom = " << GR << endl;
+
 		ZR = 0;
 ##		cerr << "FR = " << FR << ", HR = " << HR << endl;
 
@@ -380,18 +384,22 @@ int simulate(char* srcPath)
 				{
 	% for inst in getInstsByOp(constOp.tag):
 					case ${getName(inst["type"]).upper()}_F:
-##						cerr << "${getName(inst["type"])} " << endl;
-##						cerr << "\trs = " << get_rs(inst) << ", " << IRS << endl;
-##						cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
-##						cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
-##						cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
-##						cerr << "\taddr = " << get_address(inst) << endl;
+		% if debug_flg:
+						cerr << "${getName(inst["type"])} " << endl;
+						cerr << "\trs = " << get_rs(inst) << ", " << IRS << endl;
+						cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
+						cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
+						cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
+						cerr << "\taddr = " << get_address(inst) << endl;
+		% endif
 		% for code in inst["code"]:
 						${code};
 		% endfor
-##						cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
-##						cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
-##						cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
+		% if debug_flg:
+						cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
+						cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
+						cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
+		% endif
 						break;
 	% endfor
 					// TODO
@@ -403,18 +411,22 @@ int simulate(char* srcPath)
 			// TODO
 % for inst in getInstsWithoutConstOp():
 			case ${getName(inst["type"]).upper()}:
-##				cerr << "${getName(inst["type"])} " << endl;
-##				cerr << "\trs = " << get_rs(inst) << ", " << IRS << endl;
-##				cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
-##				cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
-##				cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
-##				cerr << "\taddr = " << get_address(inst) << endl;
+	% if debug_flg:
+				cerr << "${getName(inst["type"])} " << endl;
+				cerr << "\trs = " << get_rs(inst) << ", " << IRS << endl;
+				cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
+				cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
+				cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
+				cerr << "\taddr = " << get_address(inst) << endl;
+	% endif
 	% for code in inst["code"]:
 				${code};
 	% endfor
-##				cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
-##				cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
-##				cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
+	% if debug_flg:
+				cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
+				cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
+				cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
+	% endif
 				break;
 % endfor
 			default:

@@ -56,7 +56,7 @@ uint32_t getAddr(string label, uint32_t base = 0)
 	}
 	uint32_t addr = labels[label];
 	
-	cerr << "addr of " << label << " is " << addr << endl; 
+//	cerr << "addr of " << label << " is " << addr << endl; 
 	
 	return  addr - base;
 }

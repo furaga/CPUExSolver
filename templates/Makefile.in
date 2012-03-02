@@ -11,6 +11,7 @@ RENDERER=../renderer.py
 CONFIGFILE=../architecture.xml
 
 DSTDIR = ../dst
+INCDIR = $(DSTDIR)/include
 COMDIR = $(DSTDIR)/compiler
 LNKDIR = $(DSTDIR)/linker
 ASMDIR = $(DSTDIR)/assembler

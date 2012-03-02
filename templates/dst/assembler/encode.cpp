@@ -273,7 +273,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 2)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _jmp(0);
 			return true;
@@ -285,7 +285,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 4)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _jeq(rs, rt, imm);
 			return true;
@@ -297,7 +297,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 4)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _jne(rs, rt, imm);
 			return true;
@@ -309,7 +309,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 4)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _jlt(rs, rt, imm);
 			return true;
@@ -321,7 +321,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 4)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _fjeq(rs, rt, imm);
 			return true;
@@ -333,7 +333,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 4)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _fjne(rs, rt, imm);
 			return true;
@@ -345,7 +345,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 4)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _fjlt(rs, rt, imm);
 			return true;
@@ -366,7 +366,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 2)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 			code = _call(0);
 			return true;
@@ -513,7 +513,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], form, dummy) == 1)
 		{
-			sprintf(mnemonicBuffer[0], "add\t%%g0, %%g0, %%g0");
+			sprintf(mnemonicBuffer[0], "add\t$iR0, $iR0, $iR0");
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -522,7 +522,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
 		{
-			sprintf(mnemonicBuffer[0], "add\t%%g%d, %%g%d, %%g0", rt, rs);
+			sprintf(mnemonicBuffer[0], "add\t$iR%d, $iR%d, $iR0", rt, rs);
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -531,7 +531,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
 		{
-			sprintf(mnemonicBuffer[0], "sub\t%%g%d, %%g0, %%g%d", rt, rs);
+			sprintf(mnemonicBuffer[0], "sub\t$iR%d, $iR0, $iR%d", rt, rs);
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -541,8 +541,8 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 		if (sscanf(mnemonicBuffer[0], formRL, dummy, &rs, label) == 3)
 		{
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
-			sprintf(mnemonicBuffer[0], "addi\t%%g%d, %%g0, 0", rs);
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+			sprintf(mnemonicBuffer[0], "addi\t$iR%d, $iR0, 0", rs);
 			useLabels.push_back(true);
 		}
 		return	useLabels;

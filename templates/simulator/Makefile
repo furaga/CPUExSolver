@@ -1,20 +1,18 @@
 include ../Makefile.in
-HEADER = $(ASMDIR)/common.h simulator.h
+HEADER = $(INCDIR)/common.h
 
-simulator: simulator.o
-simulator.o: $(HEADER)
+all: $(SIMDIR)/simulator $(SIMDIR)/Makefile
 
-simulator.cpp: simulator.cpp.tmpl $(CONFIGFILE) $(RENDERER)
-simulator.h: simulator.h.tmpl $(CONFIGFILE) $(RENDERER)
+$(SIMDIR)/simulator: $(SIMDIR)/simulator.o
+$(SIMDIR)/simulator.o: $(HEADER)
+$(SIMDIR)/simulator.cpp: simulator.cpp.tmpl $(CONFIGFILE) $(RENDERER)
+$(SIMDIR)/Makefile: Makefile.tmpl $(CONFIGFILE) $(RENDERER)
 
-%.h:
-	python $(RENDERER) $(CONFIGFILE) $@.tmpl > $@
+$(SIMDIR)/%.cpp:
+	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-%.cpp:
-	python $(RENDERER) $(CONFIGFILE) $@.tmpl > $@
+$(SIMDIR)/Makefile:
+	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
 clean:
-	rm *.cpp
-	rm *.h
-	rm *.o
-	rm simulator
+	rm $(SIMDIR)/*

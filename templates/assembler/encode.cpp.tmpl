@@ -83,7 +83,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		{
 		% if 'L' in formAsm:
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
 		% endif
 			code = _${getName(inst["type"])}(${"rs, rt, rd" if inst["formBin"] == 'R' else "rs, rt, imm" if inst["formBin"] == 'I' else "0"});
@@ -120,7 +120,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 		{
 		% if 'L' in formAsm:
 			labelNames[currentLine] = string(label);
-			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 		% endif
 		% for i, inst in enumerate(iter):
 			sprintf(mnemonicBuffer[${i}], ${inst.get("command")});

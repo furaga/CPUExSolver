@@ -63,71 +63,6 @@ uint32_t getAddr(string label, uint32_t base = 0)
 
 //-----------------------------------------------------------------------------
 //
-// 初期化時にヒープに格納する定数テーブルの内容を読み込む
-//
-//-----------------------------------------------------------------------------
-bool readHeapData()
-{
-	bool error = false;
-
-	// ヒープサイズの読み込み
-	while (true)
-	{
-		if (fgets(buffer, MAX_LINE_SIZE, srcFile) == NULL)
-		{
-			cerr << "error at line " << cur << " (couldn't read this line)" << endl;
-			error = true;
-			heapSize = 0;
-		}
-		else
-		{
-			int cnt = sscanf(buffer, ".init_heap_size %d", &heapSize);
-			if (cnt >= 1)
-			{
-				push(binaries, heapSize / 8);
-				break;
-			}
-		}
-	}
-
-	cur++;
-	
-	// ヒープの初期化内容を読み込む
-	char* str = NULL;
-	int t_heapSize = heapSize;
-	while ((t_heapSize > 0) && (fgets(buffer, MAX_LINE_SIZE, srcFile) != NULL))
-	{
-		if (sscanf(buffer, "%s", instName) == 1)
-		{
-			if (strchr(buffer, ':'))
-			{
-				// l.0000: ! ヒープのラベル
-				str = strtok(buffer, ":");
-				labels[str] = (binaries.size() - 1) * 4;
-			}
-			else
-			{
-				// .ABCD 0x00000000 ! データ
-				int value;
-				sscanf(buffer, "%s 0x%x", str, &value);
-				push(binaries, value);
-				t_heapSize -= DATA_UNIT;
-			}
-		}
-		cur++;
-	}
-
-	if (t_heapSize > 0)
-	{
-		cerr << "Number of heap datas is too few. It should be " << (heapSize / DATA_UNIT) << endl;
-		error = true;
-	}
-
-	return error == false;
-}
-
-//-----------------------------------------------------------------------------
-//
 // 命令コマンドを順に読んでいく
 //
 //-----------------------------------------------------------------------------
@@ -150,7 +85,7 @@ bool readInstructions()
 				}
 				labels[str] = binaries.size() * 4;
 			}
-			else if (instName[0] == '!')
+			else if (string(instName).find("!") == 0)
 			{
 				// コメント
 			}
@@ -193,10 +128,7 @@ bool readInstructions()
 //-----------------------------------------------------------------------------
 void resolveLabels()
 {
-	// binaries中での命令コマンドの開始位置
-	int instOffset = heapSize / 32 + 1;
-
-	for (int i = instOffset; i < binaries.size(); i++)
+	for (int i = 0; i < binaries.size(); i++)
 	{
 		// ラベルを使わない命令なら飛ばす
 		if (binaries[i].second == false)
@@ -231,6 +163,8 @@ void resolveLabels()
 			case SRLI:
 			case MVLO:
 			case MVHI:
+			case FMVLO:
+			case FMVHI:
 			case STI:
 			case LDI:
 			case FSTI:
@@ -291,13 +225,10 @@ bool assemble(const char* srcPath, const char* dstPath)
 		return false;
 	}
 
-	// ヒープの初期化部分の読み込み
-	bool result = readHeapData();
-	if (result == false)
-	{
-		cerr << "couldn't read heap datas correctly" << endl;
-		error = true;
-	}
+	bool result = false;
+
+
+	cerr << "cur = " << cur << endl;
 
 	// ラベルや各コマンドを読み込む
 	result = readInstructions();

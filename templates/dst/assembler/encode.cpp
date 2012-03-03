@@ -23,6 +23,8 @@ DEFINE_R(_fmov, FPI, 0, FMOV_F);
 DEFINE_R(_fneg, FPI, 0, FNEG_F);
 DEFINE_I(_mvlo, MVLO);
 DEFINE_I(_mvhi, MVHI);
+DEFINE_I(_fmvlo, FMVLO);
+DEFINE_I(_fmvhi, FMVHI);
 DEFINE_J(_jmp, JMP);
 DEFINE_I(_jeq, JEQ);
 DEFINE_I(_jne, JNE);
@@ -46,6 +48,29 @@ DEFINE_R(_input, IO, 0, INPUT_F);
 DEFINE_R(_output, IO, 0, OUTPUT_F);
 DEFINE_R(_halt, SPECIAL, 0, HALT_F);
 
+typedef union
+{
+	uint32_t i;
+	float f;
+} conv;
+
+uint32_t double2bin(double d)
+{
+	conv f;
+	f.f = (float)d;
+	return f.i;
+}
+
+uint32_t gethi(double d)
+{
+	return (double2bin(d) >> 16) & 0xffff;
+}
+
+uint32_t getlo(double d)
+{
+	return double2bin(d) & 0xffff;
+}
+
 //-----------------------------------------------------------------------------
 //
 // 命令コマンドを解釈してバイナリに変換
@@ -57,6 +82,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 	uint32_t rt = 0;
 	uint32_t rd = 0;
 	uint32_t imm = 0;
+	double d = 0;
 	char label[MAX_LINE_SIZE];
 	char dummy[MAX_LINE_SIZE];
 
@@ -264,6 +290,24 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 3)
 		{
 			code = _mvhi(rs, rt, imm);
+			return true;
+		}
+	}
+	if (eq(instName, "fmvlo"))
+	{
+		int n = sscanf(buffer, formFI, dummy, &rs, &imm);
+		if (n == 3)
+		{
+			code = _fmvlo(rs, rt, imm);
+			return true;
+		}
+	}
+	if (eq(instName, "fmvhi"))
+	{
+		int n = sscanf(buffer, formFI, dummy, &rs, &imm);
+		if (n == 3)
+		{
+			code = _fmvhi(rs, rt, imm);
 			return true;
 		}
 	}
@@ -505,6 +549,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	uint32_t rt = 0;
 	uint32_t rd = 0;
 	uint32_t imm = 0;
+	double d = 0;
 	char label[MAX_LINE_SIZE];
 	char dummy[MAX_LINE_SIZE];
 	vector<bool> useLabels;
@@ -513,7 +558,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], form, dummy) == 1)
 		{
-			sprintf(mnemonicBuffer[0], "add\t$iR0, $iR0, $iR0");
+			sprintf(mnemonicBuffer[0], "add\t%%g0, %%g0, %%g0");
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -522,7 +567,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
 		{
-			sprintf(mnemonicBuffer[0], "add\t$iR%d, $iR%d, $iR0", rt, rs);
+			sprintf(mnemonicBuffer[0], "add\t%%g%d, %%g%d, %%g0", rt, rs);
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -531,7 +576,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
 		{
-			sprintf(mnemonicBuffer[0], "sub\t$iR%d, $iR0, $iR%d", rt, rs);
+			sprintf(mnemonicBuffer[0], "sub\t%%g%d, %%g0, %%g%d", rt, rs);
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -542,8 +587,19 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 		{
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
-			sprintf(mnemonicBuffer[0], "addi\t$iR%d, $iR0, 0", rs);
+			sprintf(mnemonicBuffer[0], "addi\t%%g%d, %%g0, 0", rs);
 			useLabels.push_back(true);
+		}
+		return	useLabels;
+	}
+	if (eq(instName, "fset"))
+	{
+		if (sscanf(mnemonicBuffer[0], formFD, dummy, &rs, &d) == 3)
+		{
+			sprintf(mnemonicBuffer[0], "fmvhi\t%%f%d, %d", rs, gethi(d));
+			useLabels.push_back(false);
+			sprintf(mnemonicBuffer[1], "fmvlo\t%%f%d, %d", rs, getlo(d));
+			useLabels.push_back(false);
 		}
 		return	useLabels;
 	}

@@ -21,7 +21,7 @@
 	endian = binary.get("endian").strip()
 	constTableType = binary.get("constTableType").strip()
 	tag = binary.get("tag", "0xffFFffFF").strip()
-	commentText = xmlroot.find("comment").get("text").strip()
+	comment = xmlroot.find("comment").get("text").strip()
 
 	instsI = filter(lambda inst: inst["formBin"] == 'I' and isUse(inst["type"]), instInfo)
 	instsJ = filter(lambda inst: inst["formBin"] == 'J' and isUse(inst["type"]), instInfo)
@@ -192,7 +192,7 @@ bool readInstructions()
 				}
 				labels[str] = binaries.size()${" * 4" if addressing == "byte" else ""};
 			}
-			else if (instName[0] == '${commentText}')
+			else if (string(instName).find("${comment}") == 0)
 			{
 				// コメント
 			}
@@ -235,10 +235,11 @@ bool readInstructions()
 //-----------------------------------------------------------------------------
 void resolveLabels()
 {
+% if constTableType != "no_use":
 	// binaries中での命令コマンドの開始位置
 	int instOffset = heapSize / 32 + 1;
-
-	for (int i = instOffset; i < binaries.size(); i++)
+% endif
+	for (int i = ${"instOffset" if constTableType != "no_use" else "0"}; i < binaries.size(); i++)
 	{
 		// ラベルを使わない命令なら飛ばす
 		if (binaries[i].second == false)
@@ -343,13 +344,20 @@ bool assemble(const char* srcPath, const char* dstPath)
 		return false;
 	}
 
+	bool result = false;
+
+% if constTableType != "no_use":
 	// ヒープの初期化部分の読み込み
-	bool result = readHeapData();
+	result = readHeapData();
 	if (result == false)
 	{
 		cerr << "couldn't read heap datas correctly" << endl;
 		error = true;
 	}
+
+% endif
+
+	cerr << "cur = " << cur << endl;
 
 	// ラベルや各コマンドを読み込む
 	result = readInstructions();

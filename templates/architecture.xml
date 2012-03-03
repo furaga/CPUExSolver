@@ -2,24 +2,23 @@
 <architecture name="IKA">
 	<registers>
 		<!-- %は特殊文字として扱われるためとしてエスケープする -->
-		<intRegs num="32" prefix="$iR"/>
-		<floatRegs num="32" prefix="$fR"/>
-		<constFloatRegs num="0"/>
+		<intRegs num="32" prefix="%%g"/>
+		<floatRegs num="32" prefix="%%f"/>
+		<constFloatRegs num="16"/>
 		<zeroReg index="0"/>
 		<frameReg index="1"/>
 		<heapReg index="2"/>
-		<oneReg index="28"/>
-		<minusOneReg index="29"/>
+		<oneReg index="3"/>
+		<minusOneReg index="4"/>
 		<!-- indexを""にすると汎用レジスタとは別に用意されたレジスタが使われる -->
 		<linkReg index=""/>
-		<globalReg index="31"/>
 	</registers>
 	<RAM size="8.0" />
 	<comment text="!"/>
 	
 	<!-- constTableType -->
 	<!-- ヒープ初期化部分と命令データを別ファイルに書き込む -->
-	<binary endian="BIG" constTableType="writeSize" tag="0xffFFffFF" addressing="byte" direction=""/>
+	<binary endian="BIG" constTableType="no_use" tag="0xffFFffFF" addressing="byte" direction=""/>
 	
 	<!-- 固定する機能（命令形式など）はこのファイルには書かない（ミスリードになるから） -->
 	<!-- op, functともに６ビット(0 ~ 63) -->
@@ -90,8 +89,8 @@
 		<!-- assign -->
 		<ASSIGNLO name="mvlo" op="14" explain="整数レジスタ下位16ビットに即値代入"/>
 		<ASSIGNHI name="mvhi" op="15" explain="整数レジスタ上位16ビットに即値代入"/>
-		<FASSIGNLO use="false" name="fmvlo" op="16" explain="浮動小数レジスタ下位16ビットに即値代入"/>
-		<FASSIGNHI use="false" name="fmvhi" op="17" explain="浮動小数レジスタ上位16ビットに即値代入"/>
+		<FASSIGNLO name="fmvlo" op="16" explain="浮動小数レジスタ下位16ビットに即値代入"/>
+		<FASSIGNHI name="fmvhi" op="17" explain="浮動小数レジスタ上位16ビットに即値代入"/>
 
 		<!-- branch -->
 		<BRANCH name="jmp" op="18" explain="無条件分岐"/>
@@ -139,21 +138,27 @@
 
 		<!-- mnemonic -->
 		<mnemonics>
-			<NOP name="nop" size="1" formAsm="">
-				<inst command="&quot;add\t$iR0, $iR0, $iR0&quot;"/>
+			<NOP name="nop" formAsm="">
+				<inst command="&quot;add\t%%g0, %%g0, %%g0&quot;"/>
 			</NOP>
-			<MOV name="mov" size="1" formAsm="RR">
-				<inst command="&quot;add\t$iR%d, $iR%d, $iR0&quot;, rt, rs"/>
+			<MOV name="mov" formAsm="RR">
+				<inst command="&quot;add\t%%g%d, %%g%d, %%g0&quot;, rt, rs"/>
 			</MOV>
-			<NOT use="false" name="not" size="1" formAsm="RR">
-				<inst command="&quot;nor\t$iR%d, $iR%d, $iR0&quot;, rt, rs, rs" />
+			<NOT use="false" formAsm="RR">
+				<inst command="&quot;nor\t%%g%d, %%g%d, %%g0&quot;, rt, rs, rs" />
 			</NOT>
-			<NEG name="neg" size="1" formAsm="RR">
-				<inst command="&quot;sub\t$iR%d, $iR0, $iR%d&quot;, rt, rs"/>
+			<NEG name="neg" formAsm="RR">
+				<inst command="&quot;sub\t%%g%d, %%g0, %%g%d&quot;, rt, rs"/>
 			</NEG>
-			<SETL name="setL" size="1" formAsm="RL">
-				<inst useLabel="true" command="&quot;addi\t$iR%d, $iR0, 0&quot;, rs"/>
+			<SETL name="setL" formAsm="RL">
+				<inst useLabel="true" command="&quot;addi\t%%g%d, %%g0, 0&quot;, rs"/>
 			</SETL>
+			<!-- fset %f0, 0.1 -->
+			<!-- Dはdouble型の即値を表す -->
+			<FSET name="fset" formAsm="FD">
+				<inst command="&quot;fmvhi\t%%f%d, %d&quot;, rs, gethi(d)"/>
+				<inst command="&quot;fmvlo\t%%f%d, %d&quot;, rs, getlo(d)"/>
+			</FSET>
 		</mnemonics>
 	</instructions>
 </architecture>

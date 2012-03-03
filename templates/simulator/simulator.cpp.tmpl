@@ -17,10 +17,6 @@
 	assert heapReg is not None, "heapReg is None"
 	assert heapReg.isdigit(), "heapReg is not digit"
 
-	globalReg = xmlroot.find(".//globalReg").get("index")
-	assert globalReg is not None, "globalReg is None"
-	assert globalReg.isdigit(), "globalReg is not digit"
-
 	linkReg = xmlroot.find(".//linkReg").get("index")
 	assert linkReg is not None, "linkReg is None"
 	## リンクレジスタのindexが整数でないときは専用レジスタを使用する
@@ -117,8 +113,6 @@ uint32_t lreg;
 #define HR ireg[${heapReg}]
 // リンクレジスタ
 #define LR ${"ireg[" + linkReg + "]" if linkReg.isdigit() else "lreg"}
-// グローバルレジスタ
-#define GR ireg[${globalReg}]
 
 //------------------------------------------------------------------
 
@@ -308,8 +302,8 @@ int simulate(char* srcPath)
 	uint8_t opcode, funct;
 
 	// 初期化
-	FR = GR = sizeof(RAM)${" - 4" if addressing == "byte" else " / 4 - 1"};
-	// cerr << "FR = GR = " << FR << endl;
+	FR = sizeof(RAM)${" - 4" if addressing == "byte" else " / 4 - 1"};
+	// cerr << "FR = " << FR << endl;
 
 	// バイナリを読み込む
 /*	FILE* srcFile = fopen(srcPath, "rb");
@@ -332,16 +326,16 @@ int simulate(char* srcPath)
 	
 	cerr << srcPath << endl;
 
+% if constTableType != "no_use":
 	// ヒープの初期化
 	initializeHeap();
 
+% endif
 	// メインループ
 	do
 	{
 		bool error = false;
 	
-	##	cerr << "reg_bottom = " << GR << endl;
-
 		ZR = 0;
 ##		cerr << "FR = " << FR << ", HR = " << HR << endl;
 

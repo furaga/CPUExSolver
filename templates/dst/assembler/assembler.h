@@ -55,6 +55,8 @@ PROTO_R(_fmov);
 PROTO_R(_fneg);
 PROTO_I(_mvlo);
 PROTO_I(_mvhi);
+PROTO_I(_fmvlo);
+PROTO_I(_fmvhi);
 PROTO_J(_jmp);
 PROTO_I(_jeq);
 PROTO_I(_jne);
@@ -84,40 +86,47 @@ PROTO_R(_halt);
 // 1オペランド命令の読み込みフォーマット
 #define formI "%s %d"
 #define formL "%s %s"
-#define formR "%s $iR%d"
-#define formF "%s $fR%d"
+#define formR "%s %%g%d"
+#define formF "%s %%f%d"
+#define formD "%s %lf"
 
 // 2オペランド命令の読み込みフォーマット
-#define formRI "%s $iR%d, %d"
-#define formRL "%s $iR%d, %s"
-#define formRR "%s $iR%d, $iR%d"
-#define formRF "%s $iR%d, $fR%d"
+#define formRI "%s %%g%d, %d"
+#define formRL "%s %%g%d, %s"
+#define formRR "%s %%g%d, %%g%d"
+#define formRF "%s %%g%d, %%f%d"
+#define formRD "%s %%g%d, %lf"
 
-#define formFI "%s $fR%d, %d"
-#define formFL "%s $fR%d, %s"
-#define formFR "%s $fR%d, $iR%d"
-#define formFF "%s $fR%d, $fR%d"
+#define formFI "%s %%f%d, %d"
+#define formFL "%s %%f%d, %s"
+#define formFR "%s %%f%d, %%g%d"
+#define formFF "%s %%f%d, %%f%d"
+#define formFD "%s %%f%d, %lf"
 
 // 3オペランド命令の読み込みフォーマット
-#define formRRI "%s $iR%d, $iR%d, %d"
-#define formRRL "%s $iR%d, $iR%d, %s"
-#define formRRR "%s $iR%d, $iR%d, $iR%d"
-#define formRRF "%s $iR%d, $iR%d, $fR%d"
+#define formRRI "%s %%g%d, %%g%d, %d"
+#define formRRL "%s %%g%d, %%g%d, %s"
+#define formRRR "%s %%g%d, %%g%d, %%g%d"
+#define formRRF "%s %%g%d, %%g%d, %%f%d"
+#define formRRD "%s %%g%d, %%g%d, %lf"
 
-#define formRFI "%s $iR%d, $fR%d, %d"
-#define formRFL "%s $iR%d, $fR%d, %s"
-#define formRFR "%s $iR%d, $fR%d, $iR%d"
-#define formRFF "%s $iR%d, $fR%d, $fR%d"
+#define formRFI "%s %%g%d, %%f%d, %d"
+#define formRFL "%s %%g%d, %%f%d, %s"
+#define formRFR "%s %%g%d, %%f%d, %%g%d"
+#define formRFF "%s %%g%d, %%f%d, %%f%d"
+#define formRFD "%s %%g%d, %%f%d, %lf"
 
-#define formFRI "%s $fR%d, $iR%d, %d"
-#define formFRL "%s $fR%d, $iR%d, %s"
-#define formFRR "%s $fR%d, $iR%d, $iR%d"
-#define formFRF "%s $fR%d, $iR%d, $fR%d"
+#define formFRI "%s %%f%d, %%g%d, %d"
+#define formFRL "%s %%f%d, %%g%d, %s"
+#define formFRR "%s %%f%d, %%g%d, %%g%d"
+#define formFRF "%s %%f%d, %%g%d, %%f%d"
+#define formFRD "%s %%f%d, %%g%d, %lf"
 
-#define formFFI "%s $fR%d, $fR%d, %d"
-#define formFFL "%s $fR%d, $fR%d, %s"
-#define formFFR "%s $fR%d, $fR%d, $iR%d"
-#define formFFF "%s $fR%d, $fR%d, $fR%d"
+#define formFFI "%s %%f%d, %%f%d, %d"
+#define formFFL "%s %%f%d, %%f%d, %s"
+#define formFFR "%s %%f%d, %%f%d, %%g%d"
+#define formFFF "%s %%f%d, %%f%d, %%f%d"
+#define formFFD "%s %%f%d, %%f%d, %lf"
 
 bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uint32_t currentLine, uint32_t& code, bool& useLabel);
 vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<uint32_t, string>& labelNames, uint32_t currentLine);

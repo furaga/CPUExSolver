@@ -34,15 +34,15 @@
 		forward = xmlroot.find(".//instructions").get("forward") != "false"
 		if diff == 0:
 			if forward:
-				args = args[-1:] + args[0:-1]				
+				args = args[-1:] + args[0:-1]
 		elif diff == 1:
-			il = filter(lambda ch: ch in 'IL', formAsm)
-			assert len(il) == 1, "len(il) is not 1"
-			imm_label = '&imm' if il[0] == 'I' else 'label'
+			other = filter(lambda ch: ch in 'ILD', formAsm)
+			assert len(other) == 1, "len(other) is %d. This must be 1." % len(other)
+			lastArg = '&imm' if other[0] == 'I' else 'label' if other[0] == 'L' else '&d'
 			if forward:
-				args = args[-1:] + args[0:-1] + [imm_label]
+				args = args[-1:] + args[0:-1] + [lastArg]
 			else:
-				args.insert(-1, imm_label)
+				args.insert(-1, lastArg)
 		else:
 			assert False, "num of 'I' or 'J' must be no more than 1"
 		assert len(args) >= 1, "len(args) less than 1"
@@ -60,6 +60,29 @@ ${defineInstruction(info["type"], info["formBin"])}
 	% endif
 % endfor
 
+typedef union
+{
+	uint32_t i;
+	float f;
+} conv;
+
+uint32_t double2bin(double d)
+{
+	conv f;
+	f.f = (float)d;
+	return f.i;
+}
+
+uint32_t gethi(double d)
+{
+	return (double2bin(d) >> 16) & 0xffff;
+}
+
+uint32_t getlo(double d)
+{
+	return double2bin(d) & 0xffff;
+}
+
 //-----------------------------------------------------------------------------
 //
 // 命令コマンドを解釈してバイナリに変換
@@ -71,6 +94,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 	uint32_t rt = 0;
 	uint32_t rd = 0;
 	uint32_t imm = 0;
+	double d = 0;
 	char label[MAX_LINE_SIZE];
 	char dummy[MAX_LINE_SIZE];
 
@@ -108,6 +132,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	uint32_t rt = 0;
 	uint32_t rd = 0;
 	uint32_t imm = 0;
+	double d = 0;
 	char label[MAX_LINE_SIZE];
 	char dummy[MAX_LINE_SIZE];
 	vector<bool> useLabels;

@@ -1,0 +1,49 @@
+cat lib_ml.ml globals.ml min-rt.ml > tmp.ml
+compiler/min-caml tmp
+
+
+Tuple light_dirvec.2616
+Tuple dummydv.5881
+f = 0.000000, n = 27
+f = 1.000000, n = 24
+f = 255.000000, n = 6
+f = 0.500000, n = 5
+f = 2.000000, n = 4
+f = -1.000000, n = 4
+f = 1000000000.000000, n = 3
+f = 0.100000, n = 3
+f = 3.141593, n = 3
+f = -0.100000, n = 3
+f = 0.010000, n = 3
+f = 1.570796, n = 3
+f = 0.900000, n = 2
+f = 0.200000, n = 2
+f = 15.000000, n = 2
+f = 30.000000, n = 2
+f = 10.000000, n = 2
+f = 100000000.000000, n = 2
+f = 6.283185, n = 2
+f = 128.000000, n = 1
+f = -150.000000, n = 1
+f = 150.000000, n = 1
+f = -2.000000, n = 1
+f = 0.003906, n = 1
+f = 0.300000, n = 1
+f = 0.150000, n = 1
+f = 0.000100, n = 1
+f = 0.250000, n = 1
+f = 20.000000, n = 1
+f = 0.050000, n = 1
+f = -0.200000, n = 1
+f = -200.000000, n = 1
+f = 200.000000, n = 1
+f = 0.017453, n = 1
+f = 3.141593, n = 1
+f = 9.000000, n = 1
+f = 2.500000, n = 1
+f = -1.570796, n = 1
+f = 11.000000, n = 1
+cd linker; java linker ../lib_asm.s ../tmp.s ../min-rt.s
+rm tmp.ml tmp.s
+assembler/assembler min-rt.s min-rt.bin
+simulator/simulator min-rt.bin < base.sld > base.ppm

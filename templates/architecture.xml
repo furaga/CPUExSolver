@@ -8,17 +8,17 @@
 		<zeroReg index="0"/>
 		<frameReg index="1"/>
 		<heapReg index="2"/>
-		<oneReg index="3"/>
-		<minusOneReg index="4"/>
+		<oneReg index="30"/>
+		<minusOneReg index="31"/>
 		<!-- indexを""にすると汎用レジスタとは別に用意されたレジスタが使われる -->
 		<linkReg index=""/>
 	</registers>
 	<RAM size="8.0" />
 	<comment text="!"/>
-	
+
 	<!-- constTableType -->
 	<!-- ヒープ初期化部分と命令データを別ファイルに書き込む -->
-	<binary endian="BIG" constTableType="no_use" tag="0xffFFffFF" addressing="byte" direction=""/>
+	<binary endian="LITTLE" constTableType="writeSize" tag="0xffFFffFF" addressing="byte" direction=""/>
 	
 	<!-- 固定する機能（命令形式など）はこのファイルには書かない（ミスリードになるから） -->
 	<!-- op, functともに６ビット(0 ~ 63) -->

@@ -28,6 +28,50 @@ class linker
 			FileOutputStream dstStream = new FileOutputStream(args[cnt - 1]);
 			OutputStreamWriter dst = new OutputStreamWriter(dstStream, "UTF-8");
 
+			// 各ソースファイルのヒープサイズを読み込む
+			int heapSum = 0;
+			int[] heapSizes = new int[cnt - 1];
+			Pattern heapSizePat = Pattern.compile("[.]init[_]heap[_]size[ \t]+(\\d+)");
+
+			for (int i = 0; i < cnt - 1; i++)
+			{
+				String line = srcs[i].readLine();
+				Matcher matcher = heapSizePat.matcher(line);
+				if (matcher.find())
+				{
+					heapSizes[i] = Integer.parseInt(matcher.group(1));
+					heapSum += heapSizes[i];
+				}
+				else
+				{
+					System.err.println("couldn't get heap size");
+					return;
+				}
+			}
+
+			dst.write(".init_heap_size\t" + heapSum + "\n");
+
+			// 各ファイルのヒープ初期化部分を書き込む
+			for (int i = 0; i < cnt - 1; i++)
+			{
+				while (heapSizes[i] > 0)
+				{
+					String line = srcs[i].readLine();
+					if (line == null)
+					{
+						System.err.println("ヒープサイズとデータの数が一致しません");
+						System.err.println("「ヒープサイズ / 32 = データの数」とならなければなりません");
+						break;
+					}	
+					dst.write(line + "\n");
+					line = line.trim();
+					if (line.startsWith(".long") || line.startsWith(".float") || line.startsWith(".int")) 
+					{
+						heapSizes[i] -= 32;
+					}
+				}
+			}
+
 			// メイン関数へジャンプ
 			dst.write("\tjmp\tmin_caml_start\n");
 			

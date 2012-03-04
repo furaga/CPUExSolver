@@ -186,15 +186,26 @@ float asF(uint32_t r)
 // エンディアンの変換
 //
 //-----------------------------------------------------------------------------
-uint32_t endian(uint32_t data, bool isBig)
+
+#define toggle_endian(data) ((data << 24) | ((data << 8) & 0x00ff0000) | ((data >> 8) & 0x0000ff00) | ((data >> 24) & 0x000000ff))
+
+//-----------------------------------------------------------------------------
+//
+// 定数テーブルをヒープに書き込む
+//
+//-----------------------------------------------------------------------------
+void initializeHeap()
 {
-    // デフォルトではリトルエンディアンなので、
-    // ビッグエンディアンが選択されたときに切り替える
-    if (isBig)
-    {
-        return (data << 24) | ((data << 8) & 0x00ff0000) | ((data >> 8) & 0x0000ff00) | ((data >> 24) & 0x000000ff);
-    }
-    return data;
+	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
+	int heapSize = ROM[0];
+	pc += ADDRESSING_UNIT;
+	while (heapSize > 0)
+	{
+		RAM[addr(HR)] = ROM[addr(pc)];
+		HR += ADDRESSING_UNIT;
+		heapSize -= ADDRESSING_UNIT;
+		pc += ADDRESSING_UNIT;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -233,6 +244,9 @@ int simulate(char* srcPath)
 	
 	cerr << srcPath << endl;
 
+	// ヒープの初期化
+	initializeHeap();
+
 	// メインループ
 	do
 	{
@@ -252,21 +266,20 @@ int simulate(char* srcPath)
 			break;
 		}
 
-		inst = endian(ROM[addr(pc)], true);
-		
+		inst = ROM[addr(pc)];
+
 		opcode = get_opcode(inst);
 		funct = get_funct(inst);
 		cnt++;
 		pc += ADDRESSING_UNIT;
 
 		// 1億命令発行されるごとにピリオドを一個ずつ出力する（どれだけ命令が発行されたか視覚的にわかりやすくなる）
-		if (!(cnt % (10000 * 10000)))
+		if (!(cnt % (100000000)))
 		{
 			cerr << "." << flush;
 		}
 		
 		// 読み込んだopcode・functに対応する命令を実行する
-		// TODO
 		switch(opcode)
 		{
 			case SPECIAL:
@@ -307,7 +320,6 @@ int simulate(char* srcPath)
 						break;
 					case HALT_F:
 						break;
-					// TODO
 					default:
 						break;
 				}			
@@ -339,7 +351,6 @@ int simulate(char* srcPath)
 					case FNEG_F:
 						FRT = myfneg(FRS);
 						break;
-					// TODO
 					default:
 						break;
 				}			
@@ -353,12 +364,10 @@ int simulate(char* srcPath)
 					case OUTPUT_F:
 						cout << (char)IRS << flush;
 						break;
-					// TODO
 					default:
 						break;
 				}			
 				break;
-			// TODO
 			case ADDI:
 				IRT = IRS + IMM;
 				break;

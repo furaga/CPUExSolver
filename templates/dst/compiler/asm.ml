@@ -60,13 +60,14 @@ let reg_fgs = Array.to_list (Array.init (32 - freg_num) (fun i -> Printf.sprintf
  * 整数レジスタ
  *-----------------------------------------------------------------------------*)
 let reg_0 = "%g0"	(* 常に０ *)
-let reg_p1 = "%g3"	(* 常に１ *)
-let reg_m1 = "%g4"	(* 常に-１ *)
+let reg_p1 = "%g30"	(* 常に１ *)
+let reg_m1 = "%g31"	(* 常に-１ *)
 let reg_sp = "%g1" (* frame pointer *)
 let reg_hp = "%g2" (* heap pointer *)
+let reg_lk = "%g"
 let regs = 
 	Array.of_list (List.rev (diff_list 
-		(Array.to_list (Array.init 32 (Printf.sprintf "%%g%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1]))
+		(Array.to_list (Array.init 32 (Printf.sprintf "%%g%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1; reg_lk]))
 let allregs = Array.to_list regs
 let anyregs = Array.init 32 (fun i -> Printf.sprintf "%%g%d" i)
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
@@ -89,6 +90,8 @@ let fundata = ref (M.add_list [
 		("min_caml_sqrt", { arg_regs = [fregs.(0)]; ret_reg = fregs.(0); use_regs = S.of_list [fregs.(0)]});
 		("min_caml_newline", { arg_regs = []; ret_reg = "%g0"; use_regs = S.of_list [regs.(0)]});
 		("min_caml_read_char", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0)]});
+		("min_caml_read_int", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0); regs.(1)]});
+		("min_caml_read_float", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0); regs.(1); fregs.(0)]});
 		("min_caml_input_char", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0)]})
 	] M.empty)
 

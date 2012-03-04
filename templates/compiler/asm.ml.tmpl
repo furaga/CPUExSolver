@@ -12,6 +12,8 @@
 	heapReg = r + xmlroot.find(".//heapReg").get("index")
 	oneReg = r + xmlroot.find(".//oneReg").get("index")
 	minusOneReg = r + xmlroot.find(".//minusOneReg").get("index")
+	linkReg = r + xmlroot.find(".//linkReg").get("index")
+	addressing = xmlroot.find(".//binary").get("addressing")
 %>type id_or_imm = V of Id.t | C of int
 type t =
 	| Ans of exp
@@ -78,9 +80,10 @@ let reg_p1 = "${oneReg}"	(* 常に１ *)
 let reg_m1 = "${minusOneReg}"	(* 常に-１ *)
 let reg_sp = "${frameReg}" (* frame pointer *)
 let reg_hp = "${heapReg}" (* heap pointer *)
+let reg_lk = "${linkReg}"
 let regs = 
 	Array.of_list (List.rev (diff_list 
-		(Array.to_list (Array.init ${intRegsNum} (Printf.sprintf "${intRegsPrefix}%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1]))
+		(Array.to_list (Array.init ${intRegsNum} (Printf.sprintf "${intRegsPrefix}%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1; reg_lk]))
 let allregs = Array.to_list regs
 let anyregs = Array.init ${intRegsNum} (fun i -> Printf.sprintf "${intRegsPrefix}%d" i)
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
@@ -103,6 +106,8 @@ let fundata = ref (M.add_list [
 		("min_caml_sqrt", { arg_regs = [fregs.(0)]; ret_reg = fregs.(0); use_regs = S.of_list [fregs.(0)]});
 		("min_caml_newline", { arg_regs = []; ret_reg = "${zeroReg}"; use_regs = S.of_list [regs.(0)]});
 		("min_caml_read_char", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0)]});
+		("min_caml_read_int", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0); regs.(1)]});
+		("min_caml_read_float", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0); regs.(1); fregs.(0)]});
 		("min_caml_input_char", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0)]})
 	] M.empty)
 
@@ -155,7 +160,7 @@ let rec concat e1 xt e2 =
   | Ans(exp) -> Let(xt, exp, e2)
   | Let(yt, exp, e1') -> Let(yt, exp, concat e1' xt e2)
 ##
-let align i = (if i mod 4(*8*) = 0 then i else i + 4)
+let align i = ${"(if i mod 4(*8*) = 0 then i else i + 4)" if addressing == "byte" else "i"}
 
 let indent = Global.indent
 

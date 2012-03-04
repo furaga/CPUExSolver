@@ -14,6 +14,8 @@
 	IREGS = filter(lambda reg: reg not in SPECIAL_REGS, map(lambda i: r + str(i), range(intRegsNum)))
 	FREGS = map(lambda i: f + str(i), range(floatRegsNum))
 	constTableType = xmlroot.find(".//binary").get("constTableType").strip()
+	addressing = xmlroot.find(".//binary").get("addressing")
+	addressingUnit = 4 if addressing == "byte" else 1
 %>${".init_heap_size\t0" if constTableType != "no_use" else ""}
 ##FLOAT_ONE:		${comment} 1.0
 ##	.long 0x3f800000
@@ -33,28 +35,32 @@ ${comment}----------------------------------------------------------------------
 
 ${comment} * create_array
 min_caml_create_array:
+% if addressing == "byte":
 	slli ${IREGS[0]}, ${IREGS[0]}, 2
+% endif
 	add ${IREGS[2]}, ${IREGS[0]}, ${HR}
 	mov ${IREGS[0]}, ${HR}
 CREATE_ARRAY_LOOP:
 	jlt ${IREGS[2]}, ${HR}, CREATE_ARRAY_END
 	jeq ${IREGS[2]}, ${HR}, CREATE_ARRAY_END
 	sti ${IREGS[1]}, ${HR}, 0
-	addi ${HR}, ${HR}, 4
+	addi ${HR}, ${HR}, ${addressingUnit}
 	jmp CREATE_ARRAY_LOOP
 CREATE_ARRAY_END:
 	return
 
 ${comment} * create_float_array
 min_caml_create_float_array:
+% if addressing == "byte":
 	slli ${IREGS[0]}, ${IREGS[0]}, 2
+% endif
 	add ${IREGS[1]}, ${IREGS[0]}, ${HR}
 	mov ${IREGS[0]}, ${HR}
 CREATE_FLOAT_ARRAY_LOOP:
 	jlt ${IREGS[1]}, ${HR}, CREATE_FLOAT_ARRAY_END
 	jeq ${IREGS[1]}, ${HR}, CREATE_FLOAT_ARRAY_END
 	fsti ${FREGS[0]}, ${HR}, 0
-	addi ${HR}, ${HR}, 4
+	addi ${HR}, ${HR}, ${addressingUnit}
 	jmp CREATE_FLOAT_ARRAY_LOOP
 CREATE_FLOAT_ARRAY_END:
 	return

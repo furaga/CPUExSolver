@@ -3,6 +3,8 @@
 	f = xmlroot.find(".//floatRegs").get("prefix") % ()
 	comment = xmlroot.find(".//comment").get("text")
 	constTableType = xmlroot.find(".//binary").get("constTableType").strip()
+	addressing = xmlroot.find(".//binary").get("addressing")
+	addressingUnit = 4 if addressing == "byte" else 1
 %>open Asm
 ##
 external gethi : float -> int32 = "gethi"
@@ -37,9 +39,9 @@ let locate x =
   loc !stackmap
 let offset x = 
 	let loc = locate x in
-	if List.length loc <= 0 then (Printf.eprintf "OFFSET x = %s\n" x; assert false) else 4 * List.hd loc
+	if List.length loc <= 0 then (Printf.eprintf "OFFSET x = %s\n" x; assert false) else ${"4 * " if addressing == "byte" else ""}List.hd loc
 ##
-let stacksize () = align ((List.length !stackmap + 1) * 4)
+let stacksize () = align ${"((List.length !stackmap + 1) * 4)" if addressing == "byte" else "(List.length !stackmap + 1)"}
 
 let pp_id_or_imm = function
   | V(x) -> x
@@ -104,6 +106,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
 				(s lsl 31) + (exp lsl 23) + frac
 			end in
 	  	begin
+		  	Output.add_stmt (Output.Comment (Printf.sprintf "\t${comment} %f" f));
 		  	Output.add_stmt (Output.FMvhi (x, (b lsr 16) mod (1 lsl 16)));
 		  	Output.add_stmt (Output.FMvlo (x, (b mod (1 lsl 16))));
 		end
@@ -324,9 +327,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
 		  		begin
 					g'_args oc x [] ys zs;
 					let ss = stacksize () in
-					Output.add_stmt (Output.StFi (fregs.(0), reg_sp, ss - 4));
+					Output.add_stmt (Output.StFi (fregs.(0), reg_sp, ss - ${addressingUnit}));
 					Output.add_stmt (Output.Sti (regs.(0), reg_sp, ss));
-					Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss - 4));
+					Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss - ${addressingUnit}));
 					Output.add_stmt (Output.Output regs.(0));
 					Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss));
 					Output.add_stmt Output.Return;
@@ -407,9 +410,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
 		  		begin
 					g'_args oc x [] ys zs;
 					let ss = stacksize () in
-					Output.add_stmt (Output.StFi (fregs.(0), reg_sp, ss - 4));
+					Output.add_stmt (Output.StFi (fregs.(0), reg_sp, ss - ${addressingUnit}));
 					Output.add_stmt (Output.Sti (regs.(0), reg_sp, ss));
-					Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss - 4));
+					Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss - ${addressingUnit}));
 					Output.add_stmt (Output.Output regs.(0));
 					Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss));
 					add_save_env ()
@@ -546,7 +549,7 @@ let f oc (Prog(fundefs, e)) =
   stackmap := [];
 
   (*TODO:*)
-  Output.add_stmt (Output.Addi (reg_hp, reg_0, (192 + !GlobalEnv.offset)));
+  Output.add_stmt (Output.Addi (reg_hp, reg_0, !GlobalEnv.offset));
 
   (* reg_p1, reg_m1の初期化 *)
   Output.add_stmt (Output.Addi (reg_p1, reg_0, 1));

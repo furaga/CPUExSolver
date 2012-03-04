@@ -244,16 +244,8 @@ float asF(uint32_t r)
 // エンディアンの変換
 //
 //-----------------------------------------------------------------------------
-uint32_t endian(uint32_t data, bool isBig)
-{
-    // デフォルトではリトルエンディアンなので、
-    // ビッグエンディアンが選択されたときに切り替える
-    if (isBig)
-    {
-        return (data << 24) | ((data << 8) & 0x00ff0000) | ((data >> 8) & 0x0000ff00) | ((data >> 24) & 0x000000ff);
-    }
-    return data;
-}
+
+#define toggle_endian(data) ((data << 24) | ((data << 8) & 0x00ff0000) | ((data >> 8) & 0x0000ff00) | ((data >> 24) & 0x000000ff))
 
 % if constTableType != "no_use":
 //-----------------------------------------------------------------------------
@@ -264,28 +256,26 @@ uint32_t endian(uint32_t data, bool isBig)
 void initializeHeap()
 {
 	% if constTableType == "writeSize":
-
 	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
-	int heapSize = endian(ROM[0], ${"true" if endian == "BIG" else "false"});
+	int heapSize = ${"toggle_endian(ROM[0])" if endian == "BIG" else "ROM[0]"};
 	pc += ADDRESSING_UNIT;
 	##cerr << "heapSize = " << heapSize << endl;
 	while (heapSize > 0)
 	{
-		RAM[addr(HR)] = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
+		RAM[addr(HR)] = ${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"};
 		HR += ADDRESSING_UNIT;
 		heapSize -= ADDRESSING_UNIT;
 		pc += ADDRESSING_UNIT;
 	}
-
 	% elif constTableType == "toTag":
-
 	// constTableTagが来るまでを定数テーブルとする
-	while (endian(ROM[addr(pc)], ${"true" if endina == "BIG" else "false"}) != ${constTableTag})
+	while (${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"} != ${constTableTag})
 	{
-		RAM[addr(HR)] = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
+		RAM[addr(HR)] = ${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"};
 		HR += ADDRESSING_UNIT;
 		pc += ADDRESSING_UNIT;
 	}
+	pc += ADDRESSING_UNIT;
 	% endif
 }
 
@@ -351,8 +341,8 @@ int simulate(char* srcPath)
 			break;
 		}
 
-		inst = endian(ROM[addr(pc)], ${"true" if endian == "BIG" else "false"});
-		
+		inst = ${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"};
+
 ##		cerr << "pc = " << pc;
 ##		cerr << ", inst = " << inst;		
 		opcode = get_opcode(inst);
@@ -363,13 +353,12 @@ int simulate(char* srcPath)
 		pc += ADDRESSING_UNIT;
 
 		// 1億命令発行されるごとにピリオドを一個ずつ出力する（どれだけ命令が発行されたか視覚的にわかりやすくなる）
-		if (!(cnt % (10000 * 10000)))
+		if (!(cnt % (100000000)))
 		{
 			cerr << "." << flush;
 		}
 		
 		// 読み込んだopcode・functに対応する命令を実行する
-		// TODO
 		switch(opcode)
 		{
 % for constOp in constOps.getiterator()[1:]:
@@ -389,20 +378,13 @@ int simulate(char* srcPath)
 		% for code in inst["code"]:
 						${code};
 		% endfor
-		% if debug_flg:
-						cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
-						cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
-						cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
-		% endif
 						break;
 	% endfor
-					// TODO
 					default:
 						break;
 				}			
 				break;
 % endfor
-			// TODO
 % for inst in getInstsWithoutConstOp():
 			case ${getName(inst["type"]).upper()}:
 	% if debug_flg:
@@ -416,11 +398,6 @@ int simulate(char* srcPath)
 	% for code in inst["code"]:
 				${code};
 	% endfor
-	% if debug_flg:
-				cerr << "\t\trs = " << get_rs(inst) << ", " << IRS << endl;
-				cerr << "\t\trt = " << get_rt(inst) << ", " << IRT << endl;
-				cerr << "\t\trd = " << get_rd(inst) << ", " << IRD << endl;
-	% endif
 				break;
 % endfor
 			default:

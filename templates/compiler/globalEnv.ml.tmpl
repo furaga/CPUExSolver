@@ -1,4 +1,6 @@
-(* グローバル変数（トップレベルのlet式で定義された変数）の集合を取得してenvに入れる *)
+<%
+	addressing = xmlroot.find(".//binary").get("addressing")
+%>(* グローバル変数（トップレベルのlet式で定義された変数）の集合を取得してenvに入れる *)
 open KNormal
 
 let env = ref M.empty
@@ -7,7 +9,9 @@ let offsets = ref M.empty
 let offset = ref 0
 
 let add_offset x n =
+% if addressing == "byte":
 	let n = n * 4 in
+% endif
 	if not (M.mem x !offsets) then (
 		offset := n + !offset;
 		offsets := M.add x !offset !offsets

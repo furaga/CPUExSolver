@@ -43,7 +43,6 @@ let expand xts ini addf addi =
       (offset + 4, addi x t offset acc))
 
 let rec g env =
-  let glb_offset = 192 + !GlobalEnv.offset in
   function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
   | Closure.Unit -> Ans(Nop)
   | Closure.Int(i) -> Ans(Set(i))
@@ -109,11 +108,11 @@ let rec g env =
 				concat (
 					concat (
 						(* 	let reg_hp = st reg_hp reg_bottom !GlobalEnv.offset + 4 in *)
-						(Ans (St (reg_hp, reg_0, C (-glb_offset + 4 + !GlobalEnv.offset))))
+						(Ans (St (reg_hp, reg_0, C (- !GlobalEnv.offset + 4 + !GlobalEnv.offset))))
 					)
 			      	(Id.gentmp Type.Unit, Type.Unit)
 					(*	let reg_hp = reg_bottom - !GlobalEnv.offsets[x] in *)
-					(Ans (Sub (reg_0, C (-glb_offset + M.find x !GlobalEnv.offsets))))
+					(Ans (Sub (reg_0, C (- !GlobalEnv.offset + M.find x !GlobalEnv.offsets))))
 				)
 				(reg_hp, Type.Int)
 				(* 	let x = e1' in *)
@@ -121,7 +120,7 @@ let rec g env =
 			)
 			(x, Type.Int)
 			(* 	let reg_hp = reg_bottom - !GlobalEnv.offset + 4  in *)
-			(Ans (Ld (reg_0, C (-glb_offset + 4 + !GlobalEnv.offset))))
+			(Ans (Ld (reg_0, C (- !GlobalEnv.offset + 4 + !GlobalEnv.offset))))
 		)
 		(reg_hp, Type.Int)
 		(* e2' *)
@@ -133,8 +132,8 @@ let rec g env =
       let st =
       	match t1 with
       		| Type.Unit -> assert false
-      		| Type.Float -> Ans (StF (x, reg_0, C (-glb_offset + M.find x !GlobalEnv.offsets)))
-      		| _ -> Ans (St (x, reg_0, C (-glb_offset + M.find x !GlobalEnv.offsets))) in
+      		| Type.Float -> Ans (StF (x, reg_0, C (- !GlobalEnv.offset + M.find x !GlobalEnv.offsets)))
+      		| _ -> Ans (St (x, reg_0, C (- !GlobalEnv.offset + M.find x !GlobalEnv.offsets))) in
       concat
       	(concat e1' (x, t1) st)
       	(Id.gentmp Type.Unit, Type.Unit)
@@ -145,7 +144,7 @@ let rec g env =
       concat e1' (x, t1) e2'
   (** 直にデータが入っているとき **)
   | Closure.Var(x)  when M.mem x !GlobalEnv.direct_env ->
-  	  Ans (Sub (reg_0, C (-glb_offset + M.find x !GlobalEnv.offsets)))
+  	  Ans (Sub (reg_0, C (- !GlobalEnv.offset + M.find x !GlobalEnv.offsets)))
   | Closure.Var(x) ->
       (match M.find x env with
       | Type.Unit -> Ans(Nop)
@@ -182,7 +181,7 @@ let rec g env =
 		  		else
 		  			Let (
 		  				(nw, Type.Int),
-		  				Sub (reg_0, C (-glb_offset + M.find old !GlobalEnv.offsets)),
+		  				Sub (reg_0, C (- !GlobalEnv.offset + M.find old !GlobalEnv.offsets)),
 		  				env
 		  			)
 		  ) (Ans(CallDir(Id.L(x), new_int, new_float))) (List.combine int new_int) in
@@ -192,7 +191,7 @@ let rec g env =
 	  		else
 	  			Let (
 	  				(nw, Type.Float),
-	  				Sub (reg_0, C (-glb_offset + M.find old !GlobalEnv.offsets)),
+	  				Sub (reg_0, C (- !GlobalEnv.offset + M.find old !GlobalEnv.offsets)),
 	  				env
 	  			)
 	  ) ans (List.combine float new_float)
@@ -216,10 +215,10 @@ let rec g env =
 			(0, g (M.add_list xts env) e2)
 			(fun x offset load ->
 				if not (S.mem x s) then load else
-				fletd(x, LdF(reg_0, C(-glb_offset + -offset + M.find y !GlobalEnv.offsets)), load))
+				fletd(x, LdF(reg_0, C(- !GlobalEnv.offset + -offset + M.find y !GlobalEnv.offsets)), load))
 			(fun x t offset load ->
 				if not (S.mem x s) then load else
-				Let((x, t), Ld(reg_0, C(-glb_offset + -offset + M.find y !GlobalEnv.offsets)), load)) in
+				Let((x, t), Ld(reg_0, C(- !GlobalEnv.offset + -offset + M.find y !GlobalEnv.offsets)), load)) in
 		load
   | Closure.LetTuple(xts, y, e2) ->
       let s = Closure.fv e2 in
@@ -243,11 +242,11 @@ let rec g env =
       (match M.find x env with
       | Type.Array(Type.Unit) -> Ans(Nop)
       | Type.Array(Type.Float) ->
-	  Let((offset, Type.Int), SLL(y, C(2)),
-	      Ans(LdF(x, V(offset)))) (* TODO *)
+		  Let((offset, Type.Int), SLL(y, C(2)),
+		      Ans(LdF(x, V offset)))
       | Type.Array(_) ->
-	  Let((offset, Type.Int), SLL(y, C(2)),
-	      Ans(Ld(x, V(offset)))) (* TODO *)
+		  Let((offset, Type.Int), SLL(y, C(2)),
+		      Ans(Ld(x, V offset)))
       | _ -> assert false)
   (**simmでやる**)
   | Closure.Put(x, y, z) ->
@@ -255,19 +254,17 @@ let rec g env =
       (match M.find x env with
       | Type.Array(Type.Unit) -> Ans(Nop)
       | Type.Array(Type.Float) ->
-	  Let((offset, Type.Int), SLL(y, C(2)),
-	      Ans(StF(z, x, V(offset))))
+		  Let((offset, Type.Int), SLL(y, C(2)),
+			  Ans(StF(z, x, V(offset))))
       | Type.Array(_) ->
-	  Let((offset, Type.Int), SLL(y, C(2)),
-	      Ans(St(z, x, V(offset))))
+		  Let((offset, Type.Int), SLL(y, C(2)),
+			  Ans(St(z, x, V(offset))))
       | _ -> assert false)
   | Closure.ExtArray(Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))
 
 (* 関数の仮想マシンコード生成 (caml2html: virtual_h) *)
 let h { Closure.name = (Id.L x, t); Closure.args = yts; Closure.formal_fv = zts; Closure.body = e } =
 (*	print_endline x;*)
-  let glb_offset = 192 + !GlobalEnv.offset in
-
 	let (int, float) = separate yts in
 	let (offset, load) = expand
 							zts
@@ -277,8 +274,8 @@ let h { Closure.name = (Id.L x, t); Closure.args = yts; Closure.formal_fv = zts;
 	let (offset, load) = expand
 							(List.fold_left (fun ls x -> if is_global x && not (M.mem x !GlobalEnv.direct_env) then (x, M.find x !GlobalEnv.env) :: ls else ls) [] (fv load))
 							(0, load)
-							(fun z offset load -> fletd(z, LdF(reg_0, C(-glb_offset + M.find z !GlobalEnv.offsets)), load))
-							(fun z t offset load -> Let((z, t), Ld(reg_0, C(-glb_offset + M.find z !GlobalEnv.offsets)), load)) in
+							(fun z offset load -> fletd(z, LdF(reg_0, C(- !GlobalEnv.offset + M.find z !GlobalEnv.offsets)), load))
+							(fun z t offset load -> Let((z, t), Ld(reg_0, C(- !GlobalEnv.offset + M.find z !GlobalEnv.offsets)), load)) in
 	(* xの引数ytsに適当にレジスタを割り振っていく *)
 	let (_, _, _, rs, frs) = List.fold_left
 							(fun (iregs, fregs, xs, rs, frs) (x, t) -> match t with

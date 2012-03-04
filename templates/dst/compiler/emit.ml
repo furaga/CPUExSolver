@@ -90,6 +90,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
 				(s lsl 31) + (exp lsl 23) + frac
 			end in
 	  	begin
+		  	Output.add_stmt (Output.Comment (Printf.sprintf "\t! %f" f));
 		  	Output.add_stmt (Output.FMvhi (x, (b lsr 16) mod (1 lsl 16)));
 		  	Output.add_stmt (Output.FMvlo (x, (b mod (1 lsl 16))));
 		end
@@ -507,13 +508,14 @@ let h oc { name = Id.L(x); args = args; fargs = fargs; body = e; ret = ret } =
 let f oc (Prog(fundefs, e)) =
   Format.eprintf "generating assembly...@.";
 
+  Output.add_stmt (Output.Comment (Printf.sprintf ".init_heap_size\t0"));
   Output.add_stmt (Output.Jmp "min_caml_start");
   Output.add_stmt (Output.Label "min_caml_start");
   stackset := S.empty;
   stackmap := [];
 
   (*TODO:*)
-  Output.add_stmt (Output.Addi (reg_hp, reg_0, (192 + !GlobalEnv.offset)));
+  Output.add_stmt (Output.Addi (reg_hp, reg_0, !GlobalEnv.offset));
 
   (* reg_p1, reg_m1の初期化 *)
   Output.add_stmt (Output.Addi (reg_p1, reg_0, 1));

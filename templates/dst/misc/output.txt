@@ -1,4 +1,0 @@
-<simulate> min-rt.bin
-heapSize = 180
-
-10939487 instructions had been issued

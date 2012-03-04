@@ -1,27 +1,26 @@
 open Asm
 
 let rec g env = 
-  let offset = 192 + !GlobalEnv.offset in
   function (* 命令列の13bit即値最適化 (caml2html: simm13_g) *)
   | Ans (Ld(y, V z)) when M.mem y !GlobalEnv.direct_env && not (M.mem z env) -> 
       let tmp = Id.gentmp Type.Int in
       g env (
-  		Ans (Ld (z, C (-offset + M.find y !GlobalEnv.offsets)))
+  		Ans (Ld (z, C (- !GlobalEnv.offset + M.find y !GlobalEnv.offsets)))
       )
   | Ans (LdF(y, V z)) when M.mem y !GlobalEnv.direct_env && not (M.mem z env) -> 
       let tmp = Id.gentmp Type.Int in
       g env (
-  		Ans (LdF (z, C (-offset + M.find y !GlobalEnv.offsets)))
+  		Ans (LdF (z, C (- !GlobalEnv.offset + M.find y !GlobalEnv.offsets)))
       )
   | Ans (St(y, z, V w)) when M.mem z !GlobalEnv.direct_env && not (M.mem w env) -> 
       let tmp = Id.gentmp Type.Int in
       g env (
-      		Ans (St (y, w, C (-offset + M.find z !GlobalEnv.offsets)))
+      		Ans (St (y, w, C (- !GlobalEnv.offset + M.find z !GlobalEnv.offsets)))
       )
   | Ans (StF(y, z, V w)) when M.mem z !GlobalEnv.direct_env && not (M.mem w env) -> 
       let tmp = Id.gentmp Type.Int in
       g env (
-     		Ans (StF (y, w, C (-offset + M.find z !GlobalEnv.offsets)))
+     		Ans (StF (y, w, C (- !GlobalEnv.offset + M.find z !GlobalEnv.offsets)))
       )
   | Ans(exp) -> Ans(g' env exp)
 
@@ -37,7 +36,7 @@ let rec g env =
       g env (
       	Let (
       		xt,
-      		Ld (z, C (-offset + M.find y !GlobalEnv.offsets)),
+      		Ld (z, C (- !GlobalEnv.offset + M.find y !GlobalEnv.offsets)),
       		e
       	)
       )
@@ -46,7 +45,7 @@ let rec g env =
       g env (
       	Let (
       		xt,
-      		St (y, w, C (-offset + M.find z !GlobalEnv.offsets)),
+      		St (y, w, C (- !GlobalEnv.offset + M.find z !GlobalEnv.offsets)),
       		e
       	)
       )
@@ -55,7 +54,7 @@ let rec g env =
       g env (
       	Let (
       		xt,
-      		LdF (z, C (-offset + M.find y !GlobalEnv.offsets)),
+      		LdF (z, C (- !GlobalEnv.offset + M.find y !GlobalEnv.offsets)),
       		e
       	)
       )
@@ -64,13 +63,12 @@ let rec g env =
       g env (
       	Let (
       		xt,
-      		StF (y, w, C (-offset + M.find z !GlobalEnv.offsets)),
+      		StF (y, w, C (- !GlobalEnv.offset + M.find z !GlobalEnv.offsets)),
       		e
       	)
       )
   | Let(xt, exp, e) -> Let(xt, g' env exp, g env e)
 and g' env = 
-  let offset = 192 + !GlobalEnv.offset in
   function (* 各命令の13bit即値最適化 (caml2html: simm13_gprime) *)
   | Add(x, V(y)) when M.mem y env -> Add(x, C(M.find y env))
   | Sub(x, V(y)) when M.mem y env -> Sub(x, C(M.find y env))
@@ -78,10 +76,10 @@ and g' env =
   | Div(x, V(y)) when M.mem y env -> Div(x, C(M.find y env))
   | SLL(x, V(y)) when M.mem y env -> SLL(x, C(M.find y env))
 
-  | Ld(x, V(y)) when M.mem x !GlobalEnv.direct_env && M.mem y env -> Ld(reg_0, C(-offset + M.find x !GlobalEnv.offsets + M.find y env))
-  | St(x, y, V(z)) when M.mem y !GlobalEnv.direct_env && M.mem z env -> St(x, reg_0, C(-offset + M.find y !GlobalEnv.offsets + M.find z env))
-  | LdF(x, V(y)) when M.mem x !GlobalEnv.direct_env && M.mem y env -> LdF(reg_0, C(-offset + M.find x !GlobalEnv.offsets + M.find y env))
-  | StF(x, y, V(z)) when M.mem y !GlobalEnv.direct_env && M.mem z env -> StF(x, reg_0, C(-offset + M.find y !GlobalEnv.offsets + M.find z env))
+  | Ld(x, V(y)) when M.mem x !GlobalEnv.direct_env && M.mem y env -> Ld(reg_0, C(- !GlobalEnv.offset + M.find x !GlobalEnv.offsets + M.find y env))
+  | St(x, y, V(z)) when M.mem y !GlobalEnv.direct_env && M.mem z env -> St(x, reg_0, C(- !GlobalEnv.offset + M.find y !GlobalEnv.offsets + M.find z env))
+  | LdF(x, V(y)) when M.mem x !GlobalEnv.direct_env && M.mem y env -> LdF(reg_0, C(- !GlobalEnv.offset + M.find x !GlobalEnv.offsets + M.find y env))
+  | StF(x, y, V(z)) when M.mem y !GlobalEnv.direct_env && M.mem z env -> StF(x, reg_0, C(- !GlobalEnv.offset + M.find y !GlobalEnv.offsets + M.find z env))
 
   | Ld(x, V(y)) when M.mem y env -> Ld(x, C(M.find y env))
   | St(x, y, V(z)) when M.mem z env -> St(x, y, C(M.find z env))

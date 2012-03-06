@@ -160,36 +160,25 @@ let rec read_float _ =
 		ans
 	else
 		-. ans in
-(*
-(* print_int *)
-let print_int_data = Array.create 10 0 in (* int型の値は３２bitなのでせいぜい10桁 *)
-let print_int_x = Array.create 1 0 in
-let rec print_int_get_digits digits =
-	if print_int_x.(0) <= 0 then digits - 1
+
+(* / 2, * 2はparser.mlyで左・右シフトに変換されるので使ってよい *)
+let rec mul_sub a b =
+	if b = 0 then 0
+	else (
+		let b_mod_2 = b - (b / 2) * 2 in
+		if b_mod_2 = 0 then
+			(mul_sub (a * 2) (b / 2))
+		else
+			(mul_sub (a * 2) (b / 2)) + a
+	) in
+
+let rec mul a b =
+	if b < 0 then 
+		mul_sub (-a) (-b)
 	else
-		let nx = print_int_x.(0) / 10 in
-		print_int_data.(digits) <- print_int_x.(0) - nx * 10; (* print_int_data[digits] <- print_int_x % 10 *)
-		print_int_x.(0) <- nx; (* print_int_x = print_int_x / 10 *)
-		print_int_get_digits (digits + 1) in
-let rec print_int_print_digits digits =
-	if digits < 0 then
-		()
-	else
-		let c = (print_int_data.(digits) + 48) in
-		print_char c;
-		print_int_print_digits (digits - 1) in
-let rec print_int n =
-	print_int_x.(0) <- (if n >= 0 then n else -n);
-	let digits = print_int_get_digits 0 in
-	(if n < 0 then print_char 45 else ());
-	if digits < 0 then
-		print_char 48
-	else
-		print_int_print_digits digits in
-*)
+		mul_sub a b in
 
 let rec div_binary_search a b left right =
-(*	Printf.printf "(%d, %d, %d, %d)\n" a b left right;*)
 	let mid = (left + right) / 2 in
 	let x = mid * b in
 	if right - left <= 1 then
@@ -201,6 +190,34 @@ let rec div_binary_search a b left right =
 			mid
 		else
 			div_binary_search a b left mid in
+
+let rec div_sub a b left =
+	if mul (b * 2) left  <= a then
+		div_sub a b (left * 2)
+	else
+		div_binary_search a b left (left * 2) in
+
+let rec div a b =
+	(* bは0ではない *)
+	let abs_a = if a >= 0 then a else -a in
+	let abs_b = if b >= 0 then b else -b in
+	if abs_a < abs_b then
+		0
+	else (
+		let ans = div_sub abs_a abs_b 1 in
+		if a >= 0 then (
+			if b >= 0 then
+				ans
+			else
+				-ans
+		)
+		else (
+			if b >= 0 then
+				-ans
+			else
+				ans
+		)
+	) in
 
 (* print_int div命令を使わない版 *)
 let rec print_int x =

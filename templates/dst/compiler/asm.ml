@@ -47,32 +47,34 @@ let diff_list ls1 ls2 =
 	) [] ls1
 
 (*-----------------------------------------------------------------------------
- * 浮動小数レジスタ
- *-----------------------------------------------------------------------------*)
-(* 自由に使える浮動小数レジスタの数 *)
-let freg_num = 16
-let fregs = Array.init (freg_num) (fun i -> Printf.sprintf "%%f%d" i)
-let allfregs = Array.to_list fregs
-let anyfregs = Array.init 32 (fun i -> Printf.sprintf "%%f%d" i)
-let reg_fgs = Array.to_list (Array.init (32 - freg_num) (fun i -> Printf.sprintf "%%f%d" (freg_num + i)))
-
-(*-----------------------------------------------------------------------------
  * 整数レジスタ
  *-----------------------------------------------------------------------------*)
 let reg_0 = "%g0"	(* 常に０ *)
-let reg_p1 = "%g30"	(* 常に１ *)
-let reg_m1 = "%g31"	(* 常に-１ *)
+let reg_p1 = "%g28"	(* 常に１ *)
+let reg_m1 = "%g29"	(* 常に-１ *)
 let reg_sp = "%g1" (* frame pointer *)
 let reg_hp = "%g2" (* heap pointer *)
 let reg_lk = "%g"
 let regs = 
 	Array.of_list (List.rev (diff_list 
 		(Array.to_list (Array.init 32 (Printf.sprintf "%%g%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1; reg_lk]))
-let allregs = Array.to_list regs
-let anyregs = Array.init 32 (fun i -> Printf.sprintf "%%g%d" i)
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
 let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
+let regs = Array.append (Array.sub regs 0 (Array.length regs - 2)) (Array.init 1 (fun x -> reg_cl))
+let allregs = Array.to_list regs
+let anyregs = Array.init 32 (fun i -> Printf.sprintf "%%g%d" i)
+
+(*-----------------------------------------------------------------------------
+ * 浮動小数レジスタ
+ *-----------------------------------------------------------------------------*)
+(* 自由に使える浮動小数レジスタの数 *)
+let freg_num = 16
+let reg_fgs = Array.to_list (Array.init (32 - freg_num) (fun i -> Printf.sprintf "%%f%d" (freg_num + i)))
+let anyfregs = Array.init 32 (fun i -> Printf.sprintf "%%f%d" i)
+let fregs = Array.init (freg_num) (fun i -> Printf.sprintf "%%f%d" i)
 let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
+let fregs = Array.sub fregs 0 (Array.length fregs - 1)
+let allfregs = Array.to_list fregs
 
 type fundata = {arg_regs : Id.t list; ret_reg : Id.t; use_regs : S.t}
 

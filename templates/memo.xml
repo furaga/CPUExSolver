@@ -1,0 +1,172 @@
+必須
+
+mvhi, mvlo(fmvhi, fmvloを必須にしてもいいけど、普通は整数レジスタ用の方が重宝されるでしょう)
+
+add, subは必須
+
+setL,
+
+mov（少なくともニーモニックとしては必ず存在する）
+
+sti, ldi, fsti, fldi? (st, ldでもいいけど、即値バージョンの方が多く使われているはずなのでこちらを必須にするのはなかなか妥当？)
+
+sll, slli, srai
+
+jmp, jr
+
+callかjal
+
+callRかjarl
+
+jeq, jne から少なくとも一つ
+fjeq, fjne から少なくとも一つ
+jlt, jgt, jle, jge から少なくとも一つ
+fjlt, fjgt, fjle, fjge から少なくとも一つ
+
+暫定的にsqrtも必須にしておこう。ライブラリ実装はしんどそう。
+
+縛り
+
+mvhi - mvlo
+fmvhi - fmvlo - fset
+
+mul, div（整数）はなくていい。ないときはライブラリ実装
+return はなくてもいい
+
+<instructions forward="true">
+<CONST>
+<SPECIAL value="0"/>
+<FPI value="1"/>
+<IO value="2"/>
+</CONST>
+<!-- ireg <- op ireg -->
+<MOV use="false" name="mov" op="SPECIAL" funct="0" explain="値のコピー"/>
+
+<!-- regi op regi -->
+<ADD name="add" op="SPECIAL" funct="1" explain="整数同士の足し算"/>
+<SUB name="sub" op="SPECIAL" funct="2" explain="整数同士の引き算"/>
+<MUL name="mul"  op="SPECIAL" funct="3" explain="整数同士の掛け算"/>
+<DIV name="div"  op="SPECIAL" funct="4" explain="整数同士の割り算"/>
+<SLL name="sll" op="SPECIAL" funct="5" explain="論理左シフト"/>
+<SLA use="false" name="sla" op="SPECIAL" funct="6" explain="算術左シフト"/>
+<SRL use="false" name="srll" op="SPECIAL" funct="7" explain="論理右シフト"/>
+<SRA name="srl" op="SPECIAL" funct="8" explain="算術右シフト"/>
+<AND use="false" name="and" op="SPECIAL" funct="9" explain="論理積"/>
+<OR use="false" name="or" op="SPECIAL" funct="10" explain="論理和"/>
+<NOR name="nor" op="SPECIAL" funct="50" explain="論理和"/>
+<XOR use="false" name="xor" op="SPECIAL" funct="12" explain="排他的論理和"/>
+<NOT name="not" op="SPECIAL" funct="11" explain="論理否定"/>
+
+<!-- regi op imm -->
+<ADDI name="addi" op="3" explain="整数同士の足し算(即値)"/>
+<SUBI name="subi" op="4" explain="整数同士の引き算(即値)"/>
+<MULI name="muli" op="5" explain="整数同士の掛け算(即値)"/>
+<DIVI use="false" name="divi" op="6" explain="整数同士の割り算(即値)"/>
+<SLLI name="slli" op="7" explain="論理左シフト(即値)"/>
+<SLAI use="false" name="slai" op="8" explain="算術左シフト(即値)"/>
+<SRLI use="false" name="srlli" op="9" explain="論理右シフト(即値)"/>
+<SRAI name="srli" op="10" explain="算術右シフト(即値)"/>
+<ANDI use="false" name="andi" op="11" explain="論理積(即値)"/>
+<ORI use="false" name="ori" op="12" explain="論理和(即値)"/>
+<NORI use="false" name="nori" op="50" explain="論理和(即値)"/>
+<XORI use="false" name="xori" op="13" explain="排他的論理和(即値)"/>
+
+<!-- regf op regf -->
+<FADD name="fadd" op="FPI" funct="0" explain="浮動小数点数同士の足し算"/>
+<FSUB name="fsub" op="FPI" funct="1" explain="浮動小数点数同士の引き算"/>
+<FMUL name="fmul" op="FPI" funct="2" explain="浮動小数点数同士の掛け算"/>
+<FDIV name="fdiv" op="FPI" funct="3" explain="浮動小数点数同士の割り算"/>
+
+<!-- op regf -->
+<FINV use="false" name="finv" op="FPI" funct="4" explain="浮動小数点数の逆数"/>
+<FSQRT name="fsqrt" op="FPI" funct="5" explain="浮動小数点数の平方根"/>
+<FABS name="fabs" op="FPI" funct="6" explain="浮動小数点数の絶対値"/>
+<FMOV name="fmov" op="FPI" funct="7" explain="memcpy"/>
+<FNEG name="fneg" op="FPI" funct="8" explain="浮動小数点数の符号反転"/>
+<FLOOR use="false" name="floor" op="FPI" funct="9" explain="浮動小数点数同士の割り算"/>
+<FSIN use="false" name="fsin" op="FPI" funct="10" explain="正弦"/>
+<FCOS use="false" name="fcos" op="FPI" funct="11" explain="余弦"/>
+<FTAN use="false" name="ftan" op="FPI" funct="12" explain="正接"/>
+<FATAN use="false" name="fatan" op="FPI" funct="13" explain="逆正接"/>
+
+<!-- ireg <- op ireg-->
+<ITOF use="false" name="itof" op="FPI" funct="14" explain="int_of_float"/>
+<IMOVF use="false" name="imvf" op="FPI" funct="15" explain="memcpy"/>
+
+<!-- freg <- op ireg-->
+<FTOI use="false" name="ftoi" op="FPI" funct="16" explain="float_of_int"/>
+<FMOVI use="false" name="fmvi" op="FPI" funct="17" explain="memcpy"/>
+
+<!-- assign -->
+<ASSIGNLO name="mvlo" op="14" explain="整数レジスタ下位16ビットに即値代入"/>
+<ASSIGNHI name="mvhi" op="15" explain="整数レジスタ上位16ビットに即値代入"/>
+<FASSIGNLO name="fmvlo" op="16" explain="浮動小数レジスタ下位16ビットに即値代入"/>
+<FASSIGNHI name="fmvhi" op="17" explain="浮動小数レジスタ上位16ビットに即値代入"/>
+
+<!-- branch -->
+<BRANCH name="jmp" op="18" explain="無条件分岐"/>
+<BEQ name="jeq" op="19" addressMode="relative" explain="条件分岐(=)"/>
+<BNE name="jne" op="20" addressMode="relative" explain="条件分岐(＜＞)"/>
+<BLT name="jlt" op="21" addressMode="relative" explain="条件分岐(＜)"/>
+<BLE use="false" name="jle" addressMode="relative" op="22" explain="条件分岐(＜=)"/>
+<BGT use="false" name="jgt" addressMode="relative" op="23" explain="条件分岐(＞)"/>
+<BGE use="false" name="jge" addressMode="relative" op="24" explain="条件分岐(＜=)"/>
+
+<!-- branch float -->
+<FBEQ name="fjeq" op="25" addressMode="relative" explain="浮動小数の条件分岐(=)"/>
+<FBNE name="fjne" op="26" addressMode="relative" explain="浮動小数の条件分岐(＜＞)"/>
+<FBLT name="fjlt" op="27" addressMode="relative" explain="浮動小数の条件分岐(＜)"/>
+<FBLE use="false" name="fjle" op="28" addressMode="relative" explain="浮動小数の条件分岐(＜=)"/>
+<FBGT use="false" name="fjgt" op="29" addressMode="relative" explain="浮動小数の条件分岐(＞)"/>
+<FBGE use="false" name="fjge" op="30" addressMode="relative" explain="浮動小数の条件分岐(＞=)"/>
+
+<!-- jmp, call, return -->
+<JMPREG name="b" op="SPECIAL" funct="13" explain="レジスタの値へジャンプ"/>
+<CALL name="call" op="31" explain="関数呼び出し"/>
+<CALLREG name="callR" op="SPECIAL" funct="14" explain="クロージャ呼び出し"/>
+<RETURN name="return" op="32" explain="関数呼び出しから返る"/>
+
+<!-- memory access -->
+<ST name="st" op="33" explain="整数ストア"/>
+<LD name="ld" op="34" explain="整数ロード"/>
+<FST name="fst" op="35" explain="浮動小数ストア"/>
+<FLD name="fld" op="36" explain="浮動小数ロード"/>
+<STI name="sti" op="37" explain="整数ストア(即値)"/>
+<LDI name="ldi" op="38" explain="整数ロード(即値)"/>
+<FSTI name="fsti" op="39" explain="浮動小数ストア(即値)"/>
+<FLDI name="fldi" op="40"  explain="浮動小数ロード(即値)"/>
+
+<!-- I/O -->
+<INPUTBYTE name="input" op="IO" funct="0" explain="１バイトを整数レジスタ入力"/>
+<INPUTWORD use="false" name="inputw" op="IO" funct="1" explain="4バイトを整数レジスタに入力"/>
+<INPUTFLOAT use="false" name="inputf" op="IO" funct="2" explain="4バイトを浮動小数レジスタ入力"/>
+<OUTPUTBYTE name="output" op="IO" funct="3" explain="下位１バイトを出力"/>
+<OUTPUTWORD use="false" name="outputw" op="IO" funct="4" explain="整数レジスタ4バイトを出力"/>
+<OUTPUTFLOAT use="false" name="outputf" op="IO" funct="5" explain="浮動小数レジスタ4バイトを出力"/>
+
+<!-- others -->
+<HALT name="halt" op="SPECIAL" funct="15" explain="プログラム終了"/>
+
+<!-- mnemonic -->
+<mnemonics>
+<NOP name="nop" formAsm="">
+	<inst command="&quot;add\t%%g0, %%g0, %%g0&quot;"/>
+</NOP>
+<MOV name="mov" formAsm="RR">
+	<inst command="&quot;add\t%%g%d, %%g%d, %%g0&quot;, rt, rs"/>
+</MOV>
+<NOT use="false" formAsm="RR">
+	<inst command="&quot;nor\t%%g%d, %%g%d, %%g0&quot;, rt, rs, rs" />
+</NOT>
+<NEG name="neg" formAsm="RR">
+	<inst command="&quot;sub\t%%g%d, %%g0, %%g%d&quot;, rt, rs"/>
+</NEG>
+<SETL name="setL" formAsm="RL">
+	<inst useLabel="true" command="&quot;addi\t%%g%d, %%g0, 0&quot;, rs"/>
+</SETL>
+<!-- fset %f0, 0.1 -->
+<!-- Dはdouble型の即値を表す -->
+<FSET name="fset" formAsm="FD">
+	<inst command="&quot;fmvhi\t%%f%d, %d&quot;, rs, gethi(d)"/>
+	<inst command="&quot;fmvlo\t%%f%d, %d&quot;, rs, getlo(d)"/>
+</FSET>

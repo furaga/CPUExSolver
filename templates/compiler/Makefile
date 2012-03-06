@@ -50,6 +50,7 @@ $(COMDIR)/main.ml: main.ml.tmpl $(DEPEND)
 $(COMDIR)/sglobal.ml: sglobal.ml.tmpl $(DEPEND)
 $(COMDIR)/float.c: float.c.tmpl $(DEPEND)
 $(COMDIR)/globalEnv.ml: globalEnv.ml.tmpl $(DEPEND)
+$(COMDIR)/parser.mly: parser.mly.tmpl $(DEPEND)
 
 
 clean:

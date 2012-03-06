@@ -3,7 +3,7 @@
 type t =
 	| Comment of string
 	| Label of Id.t
-	| Data of Id.t * float * int32
+	| JCmp of Id.t * Id.t * Id.t * Id.t
 	| SetL of Id.t * Id.t
 	| FSet of Id.t * float
 	| FMvhi of Id.t * int
@@ -46,7 +46,8 @@ type t =
 	| OutputF of Id.t
 	| B of Id.t
 	| Jmp of Id.t
-	| JCmp of Id.t * Id.t * Id.t * Id.t
+	| Jal of Id.t
+	| Jarl of Id.t
 	| Call of Id.t
 	| CallR of Id.t
 	| Return
@@ -90,6 +91,8 @@ let eliminate_sp_calc ls =
 				| B _
 				| Jmp _
 				| JCmp _
+				| Jal _
+				| Jarl _
 				| Call _
 				| CallR _
 				| Return
@@ -104,7 +107,6 @@ let eliminate_sp_calc ls =
 				| StFi (x, y, _) when x = Asm.reg_sp || y = Asm.reg_sp -> None
 				| _ -> target
 	) None ls
-	
 
 (* 最適化 *)
 let optimize () = eliminate_sp_calc !prog
@@ -115,14 +117,11 @@ let output_stmt oc stmt =
 	else (
 		(match stmt.state with
 			| Exist -> ()
-			| Vanish -> Printf.fprintf oc "! ";
+			| Vanish -> Printf.fprintf oc "! "
 		);
 		match stmt.inst with
 			| Comment comment -> Printf.fprintf oc "%s\n" comment
 			| Label label -> Printf.fprintf oc "%s:\n" label
-			| Data (label, f, b) ->
-				Printf.fprintf oc "%s:\t! %f\n" label f;
-				Printf.fprintf oc "\t.long\t0x%lx\n" b
 			| SetL (dst, label) -> 	Printf.fprintf oc "\tsetL %s, %s\n" dst label (* ラベルのコピー *)
 			| FSet (dst, f) -> 	Printf.fprintf oc "\tfset %s, %.20E\n" dst f
 			| FMvhi (dst, n) -> Printf.fprintf oc "\tfmvhi\t%s, %d\n" dst n
@@ -149,28 +148,25 @@ let output_stmt oc stmt =
 			| FDiv (dst, x, y) -> Printf.fprintf oc "\tfdiv\t%s, %s, %s\n" dst x y
 			| FSqrt (dst, src) -> Printf.fprintf oc "\tfsqrt\t%s, %s\n" dst src
 			| FAbs (dst, src) -> Printf.fprintf oc "\tfabs\t%s, %s\n" dst src
-
-			| Ld (dst, src, index) -> Printf.fprintf oc "\tld\t%s, %s, %s\n" dst src index;
+			| Ld (dst, src, index) -> Printf.fprintf oc "\tld\t%s, %s, %s\n" dst src index
 			| Ldi (dst, src, index) -> Printf.fprintf oc "\tldi\t%s, %s, %d\n" dst src index;
-			| LdF (dst, src, index) -> Printf.fprintf oc "\tfld\t%s, %s, %s\n" dst src index;
+			| LdF (dst, src, index) -> Printf.fprintf oc "\tfld\t%s, %s, %s\n" dst src index
 			| LdFi (dst, src, index) -> Printf.fprintf oc "\tfldi\t%s, %s, %d\n" dst src index;
-
-			| St (src, target, index) -> Printf.fprintf oc "\tst\t%s, %s, %s\n" src target index;
+			| St (src, target, index) -> Printf.fprintf oc "\tst\t%s, %s, %s\n" src target index
 			| Sti (src, target, index) -> Printf.fprintf oc "\tsti\t%s, %s, %d\n" src target index;
-			| StF (src, target, index) -> Printf.fprintf oc "\tfst\t%s, %s, %s\n" src target index;
+			| StF (src, target, index) -> Printf.fprintf oc "\tfst\t%s, %s, %s\n" src target index
 			| StFi (src, target, index) -> Printf.fprintf oc "\tfsti\t%s, %s, %d\n" src target index;
-
-			| Input src -> 	Printf.fprintf oc "\tinput\t%s\n" src;
-			| InputW src -> 	Printf.fprintf oc "\tinputw\t%s\n" src;
-			| InputF src -> 	Printf.fprintf oc "\tinputf\t%s\n" src;
-			
-			| Output dst -> Printf.fprintf oc "\toutput\t%s\n" dst;
-			| OutputW dst -> Printf.fprintf oc "\toutputw\t%s\n" dst;
-			| OutputF dst -> Printf.fprintf oc "\toutputf\t%s\n" dst;
-			
-			| B reg -> Printf.fprintf oc "\tb\t%s\n" reg;
-			| Jmp label -> Printf.fprintf oc "\tjmp\t%s\n" label;
+			| Input src -> 	Printf.fprintf oc "\tinput\t%s\n" src
+			| InputW src -> Printf.fprintf oc "\tinputw\t%s\n" src
+			| InputF src -> Printf.fprintf oc "\tinputf\t%s\n" src
+			| Output dst -> Printf.fprintf oc "\toutput\t%s\n" dst
+			| OutputW dst -> Printf.fprintf oc "\toutputw\t%s\n" dst
+			| OutputF dst -> Printf.fprintf oc "\toutputf\t%s\n" dst
+			| B reg -> Printf.fprintf oc "\tb\t%s\n" reg
+			| Jmp label -> Printf.fprintf oc "\tjmp\t%s\n" label
 			| JCmp (typ, x, y, label) -> Printf.fprintf oc "\t%s\t%s, %s, %s\n" typ x y label
+			| Jal label -> Printf.fprintf oc "\tjal\t%s\n" label
+			| Jarl cls -> Printf.fprintf oc "\tjarl\t%s\n" cls
 			| Call label -> Printf.fprintf oc "\tcall\t%s\n" label
 			| CallR cls -> Printf.fprintf oc "\tcallR\t%s\n" cls
 			| Return -> Printf.fprintf oc "\treturn\n"

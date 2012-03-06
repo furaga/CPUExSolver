@@ -1,11 +1,41 @@
 <%
 	comment = xmlroot.find(".//comment").get("text")
+	direction =  xmlroot.find(".//binary").get("direction")
+	
+	def getInst(type):
+		inst = xmlroot.find(".//" + type)
+		assert inst is not None, "inst is None(" + type + ")"
+		return inst
+	
+	def getName(type):
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+
+	def isUse(type):
+		use = getInst(type).get("use", "true")
+		return use != "false"
+	
+	def getArgTypes(formAsm):
+		formAsm = filter(lambda ch: ch in "RFILD", formAsm)
+		if len(formAsm) == 0:
+			return ""
+		ans = " of "
+		for ch in formAsm:
+			if ch in "RFL":
+				ans += "Id.t * "
+			elif ch in "I":
+				ans += "int * "
+			elif ch in "D":
+				ans += "float * "
+		return ans[:-3]
+		
 %>(* Emitの出力を加工して、無駄な部分を省く *)
 
 type t =
 	| Comment of string
 	| Label of Id.t
-	| Data of Id.t * float * int32
+	| JCmp of Id.t * Id.t * Id.t * Id.t
 	| SetL of Id.t * Id.t
 	| FSet of Id.t * float
 	| FMvhi of Id.t * int
@@ -48,7 +78,8 @@ type t =
 	| OutputF of Id.t
 	| B of Id.t
 	| Jmp of Id.t
-	| JCmp of Id.t * Id.t * Id.t * Id.t
+	| Jal of Id.t
+	| Jarl of Id.t
 	| Call of Id.t
 	| CallR of Id.t
 	| Return
@@ -64,6 +95,8 @@ type stmt = {
 let prog = ref []
 let add_stmt inst = prog := {inst = inst; state = Exist} :: !prog
 
+% if isUse("ADDI") and isUse("SUBI"):
+## TODO 面倒くさいしやんなくていいかな
 (* %g1の無駄な増減を削除 *)
 let get_some x = match x with Some a -> a | _ -> assert false
 let eliminate_sp_calc ls =
@@ -92,6 +125,8 @@ let eliminate_sp_calc ls =
 				| B _
 				| Jmp _
 				| JCmp _
+				| Jal _
+				| Jarl _
 				| Call _
 				| CallR _
 				| Return
@@ -106,77 +141,74 @@ let eliminate_sp_calc ls =
 				| StFi (x, y, _) when x = Asm.reg_sp || y = Asm.reg_sp -> None
 				| _ -> target
 	) None ls
-	
 
 (* 最適化 *)
 let optimize () = eliminate_sp_calc !prog
 
+% endif
 (* 一文を出力 *)
 let output_stmt oc stmt =
 	if stmt.state = Vanish then ()
 	else (
 		(match stmt.state with
 			| Exist -> ()
-			| Vanish -> Printf.fprintf oc "! ";
+			| Vanish -> Printf.fprintf oc "${comment} "
 		);
 		match stmt.inst with
 			| Comment comment -> Printf.fprintf oc "%s\n" comment
 			| Label label -> Printf.fprintf oc "%s:\n" label
-			| Data (label, f, b) ->
-				Printf.fprintf oc "%s:\t${comment} %f\n" label f;
-				Printf.fprintf oc "\t.long\t0x%lx\n" b
-			| SetL (dst, label) -> 	Printf.fprintf oc "\tsetL %s, %s\n" dst label (* ラベルのコピー *)
-			| FSet (dst, f) -> 	Printf.fprintf oc "\tfset %s, %.20E\n" dst f
-			| FMvhi (dst, n) -> Printf.fprintf oc "\tfmvhi\t%s, %d\n" dst n
-			| FMvlo (dst, n) -> Printf.fprintf oc "\tfmvlo\t%s, %d\n" dst n
-			| Mvhi (dst, n) -> Printf.fprintf oc "\tmvhi\t%s, %d\n" dst n
-			| Mvlo (dst, n) -> Printf.fprintf oc "\tmvlo\t%s, %d\n" dst n
-			| Mov (dst, src) -> Printf.fprintf oc "\tmov\t%s, %s\n" dst src
-			| FMov (dst, src) -> Printf.fprintf oc "\tfmov\t%s, %s\n" dst src
-			| FNeg (dst, src) -> Printf.fprintf oc "\tfneg\t%s, %s\n" dst src
-			| Add (dst, x, y) -> Printf.fprintf oc "\tadd\t%s, %s, %s\n" dst x y
-			| Sub (dst, x, y) -> Printf.fprintf oc "\tsub\t%s, %s, %s\n" dst x y
-			| Mul (dst, x, y) -> Printf.fprintf oc "\tmul\t%s, %s, %s\n" dst x y
-			| Div (dst, x, y) -> Printf.fprintf oc "\tdiv\t%s, %s, %s\n" dst x y
-			| SLL (dst, x, y) -> Printf.fprintf oc "\tsll\t%s, %s, %s\n" dst x y
-			| Addi (dst, x, y) -> Printf.fprintf oc "\taddi\t%s, %s, %d\n" dst x y
-			| Subi (dst, x, y) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" dst x y
-			| Muli (dst, x, y) -> Printf.fprintf oc "\tmuli\t%s, %s, %d\n" dst x y
-			| Divi (dst, x, y) -> Printf.fprintf oc "\tdivi\t%s, %s, %d\n" dst x y
-			| SLLi (dst, x, y) -> Printf.fprintf oc "\tslli\t%s, %s, %d\n" dst x y
-			| SRLi (dst, x, y) -> Printf.fprintf oc "\tsrli\t%s, %s, %d\n" dst x y
-			| FAdd (dst, x, y) -> Printf.fprintf oc "\tfadd\t%s, %s, %s\n" dst x y
-			| FSub (dst, x, y) -> Printf.fprintf oc "\tfsub\t%s, %s, %s\n" dst x y
-			| FMul (dst, x, y) -> Printf.fprintf oc "\tfmul\t%s, %s, %s\n" dst x y
-			| FDiv (dst, x, y) -> Printf.fprintf oc "\tfdiv\t%s, %s, %s\n" dst x y
-			| FSqrt (dst, src) -> Printf.fprintf oc "\tfsqrt\t%s, %s\n" dst src
-			| FAbs (dst, src) -> Printf.fprintf oc "\tfabs\t%s, %s\n" dst src
-
-			| Ld (dst, src, index) -> Printf.fprintf oc "\tld\t%s, %s, %s\n" dst src index;
-			| Ldi (dst, src, index) -> Printf.fprintf oc "\tldi\t%s, %s, %d\n" dst src index;
-			| LdF (dst, src, index) -> Printf.fprintf oc "\tfld\t%s, %s, %s\n" dst src index;
-			| LdFi (dst, src, index) -> Printf.fprintf oc "\tfldi\t%s, %s, %d\n" dst src index;
-
-			| St (src, target, index) -> Printf.fprintf oc "\tst\t%s, %s, %s\n" src target index;
-			| Sti (src, target, index) -> Printf.fprintf oc "\tsti\t%s, %s, %d\n" src target index;
-			| StF (src, target, index) -> Printf.fprintf oc "\tfst\t%s, %s, %s\n" src target index;
-			| StFi (src, target, index) -> Printf.fprintf oc "\tfsti\t%s, %s, %d\n" src target index;
-
-			| Input src -> 	Printf.fprintf oc "\tinput\t%s\n" src;
-			| InputW src -> 	Printf.fprintf oc "\tinputw\t%s\n" src;
-			| InputF src -> 	Printf.fprintf oc "\tinputf\t%s\n" src;
-			
-			| Output dst -> Printf.fprintf oc "\toutput\t%s\n" dst;
-			| OutputW dst -> Printf.fprintf oc "\toutputw\t%s\n" dst;
-			| OutputF dst -> Printf.fprintf oc "\toutputf\t%s\n" dst;
-			
-			| B reg -> Printf.fprintf oc "\tb\t%s\n" reg;
-			| Jmp label -> Printf.fprintf oc "\tjmp\t%s\n" label;
+			| SetL (dst, label) -> 	Printf.fprintf oc "\t${getName("SETL")} %s, %s\n" dst label (* ラベルのコピー *)
+			| FSet (dst, f) -> 	Printf.fprintf oc "\t${getName("FSET")} %s, %.20E\n" dst f
+			| FMvhi (dst, n) -> Printf.fprintf oc "\t${getName("FSETHI")}\t%s, %d\n" dst n
+			| FMvlo (dst, n) -> Printf.fprintf oc "\t${getName("FSETLO")}\t%s, %d\n" dst n
+			| Mvhi (dst, n) -> Printf.fprintf oc "\t${getName("SETHI")}\t%s, %d\n" dst n
+			| Mvlo (dst, n) -> Printf.fprintf oc "\t${getName("SETLO")}\t%s, %d\n" dst n
+			| Mov (dst, src) -> Printf.fprintf oc "\t${getName("MOV")}\t%s, %s\n" dst src
+			| FMov (dst, src) -> Printf.fprintf oc "\t${getName("FMOV")}\t%s, %s\n" dst src
+			| FNeg (dst, src) -> Printf.fprintf oc "\t${getName("FNEG")}\t%s, %s\n" dst src
+			| Add (dst, x, y) -> Printf.fprintf oc "\t${getName("ADD")}\t%s, %s, %s\n" dst x y
+			| Sub (dst, x, y) -> Printf.fprintf oc "\t${getName("SUB")}\t%s, %s, %s\n" dst x y
+			| Mul (dst, x, y) -> Printf.fprintf oc "\t${getName("MUL")}\t%s, %s, %s\n" dst x y
+			| Div (dst, x, y) -> Printf.fprintf oc "\t${getName("DIV")}\t%s, %s, %s\n" dst x y
+			| SLL (dst, x, y) -> Printf.fprintf oc "\t${getName("SLL")}\t%s, %s, %s\n" dst x y
+			| Addi (dst, x, y) -> Printf.fprintf oc "\t${getName("ADDI")}\t%s, %s, %d\n" dst x y
+			| Subi (dst, x, y) -> Printf.fprintf oc "\t${getName("SUBI")}\t%s, %s, %d\n" dst x y
+			| Muli (dst, x, y) -> Printf.fprintf oc "\t${getName("MULI")}\t%s, %s, %d\n" dst x y
+			| Divi (dst, x, y) -> Printf.fprintf oc "\t${getName("DIVI")}\t%s, %s, %d\n" dst x y
+			| SLLi (dst, x, y) -> Printf.fprintf oc "\t${getName("SLLI")}\t%s, %s, %d\n" dst x y
+			| SRLi (dst, x, y) -> Printf.fprintf oc "\t${getName("SRAI")}\t%s, %s, %d\n" dst x y
+			| FAdd (dst, x, y) -> Printf.fprintf oc "\t${getName("FADD")}\t%s, %s, %s\n" dst x y
+			| FSub (dst, x, y) -> Printf.fprintf oc "\t${getName("FSUB")}\t%s, %s, %s\n" dst x y
+			| FMul (dst, x, y) -> Printf.fprintf oc "\t${getName("FMUL")}\t%s, %s, %s\n" dst x y
+			| FDiv (dst, x, y) -> Printf.fprintf oc "\t${getName("FDIV")}\t%s, %s, %s\n" dst x y
+			| FSqrt (dst, src) -> Printf.fprintf oc "\t${getName("FSQRT")}\t%s, %s\n" dst src
+			| FAbs (dst, src) -> Printf.fprintf oc "\t${getName("FABS")}\t%s, %s\n" dst src
+% if direction == "toBig":
+			(* 即値バージョンのLd, St系では、大人の事情によりindexの符号が逆になってしまっているので符号を反転させる。 *)
+% endif
+			| Ld (dst, src, index) -> Printf.fprintf oc "\t${getName("LD")}\t%s, %s, %s\n" dst src index
+			| Ldi (dst, src, index) -> Printf.fprintf oc "\t${getName("LDI")}\t%s, %s, %d\n" dst src ${"index" if direction != "toBig" else "(-index)"};
+			| LdF (dst, src, index) -> Printf.fprintf oc "\t${getName("FLD")}\t%s, %s, %s\n" dst src index
+			| LdFi (dst, src, index) -> Printf.fprintf oc "\t${getName("FLDI")}\t%s, %s, %d\n" dst src ${"index" if direction != "toBig" else "(-index)"};
+			| St (src, target, index) -> Printf.fprintf oc "\t${getName("ST")}\t%s, %s, %s\n" src target index
+			| Sti (src, target, index) -> Printf.fprintf oc "\t${getName("STI")}\t%s, %s, %d\n" src target ${"index" if direction != "toBig" else "(-index)"};
+			| StF (src, target, index) -> Printf.fprintf oc "\t${getName("FST")}\t%s, %s, %s\n" src target index
+			| StFi (src, target, index) -> Printf.fprintf oc "\t${getName("FSTI")}\t%s, %s, %d\n" src target ${"index" if direction != "toBig" else "(-index)"};
+			| Input src -> 	Printf.fprintf oc "\t${getName("INPUTBYTE")}\t%s\n" src
+			| InputW src -> Printf.fprintf oc "\t${getName("INPUTWORD")}\t%s\n" src
+			| InputF src -> Printf.fprintf oc "\t${getName("INPUTFLOAT")}\t%s\n" src
+			| Output dst -> Printf.fprintf oc "\t${getName("OUTPUTBYTE")}\t%s\n" dst
+			| OutputW dst -> Printf.fprintf oc "\t${getName("OUTPUTWORD")}\t%s\n" dst
+			| OutputF dst -> Printf.fprintf oc "\t${getName("OUTPUTFLOAT")}\t%s\n" dst
+			| B reg -> Printf.fprintf oc "\t${getName("JMPREG")}\t%s\n" reg
+			| Jmp label -> Printf.fprintf oc "\t${getName("BRANCH")}\t%s\n" label
 			| JCmp (typ, x, y, label) -> Printf.fprintf oc "\t%s\t%s, %s, %s\n" typ x y label
-			| Call label -> Printf.fprintf oc "\tcall\t%s\n" label
-			| CallR cls -> Printf.fprintf oc "\tcallR\t%s\n" cls
-			| Return -> Printf.fprintf oc "\treturn\n"
-			| Halt -> Printf.fprintf oc "\thalt\n"
+			| Jal label -> Printf.fprintf oc "\t${getName("JMP_LNK")}\t%s\n" label
+			| Jarl cls -> Printf.fprintf oc "\t${getName("JMPREG_LNK")}\t%s\n" cls
+			| Call label -> Printf.fprintf oc "\t${getName("CALL")}\t%s\n" label
+			| CallR cls -> Printf.fprintf oc "\t${getName("CALLREG")}\t%s\n" cls
+			| Return -> Printf.fprintf oc "\t${getName("RETURN")}\n"
+			| Halt -> Printf.fprintf oc "\t${getName("HALT")}\n"
 	)
 
 (* 出力 *)

@@ -5,6 +5,7 @@
 	constTableType = binary.get("constTableType")
 	constTableTag = binary.get("tag", "0xffFFffFF")
 	addressing = binary.get("addressing")
+	rom_addressing = binary.get("rom_addressing")
 	
 	zeroReg = xmlroot.find(".//zeroReg").get("index")
 	assert zeroReg.isdigit(), "zeroReg is not digit"
@@ -48,6 +49,18 @@
 
 	def getInstsWithoutConstOp():
 		return filter(lambda inst: isUse(inst["type"]) and getInst(inst["type"]).get("op", "0").isdigit(), instInfo)
+
+	def getArgs(formAsm):
+		xml_formAsm = getInst(inst["type"]).get("formAsm")
+		if xml_formAsm is not None:
+			xml_formAsm_list = filter(lambda x: x != "", map(lambda x: x.strip(), xml_formAsm.split(',')))
+			if len(xml_formAsm_list) == len(formAsm):
+				formAsm = xml_formAsm_list
+		return {
+			"arg0" : "" if len(formAsm) <= 0 else formAsm[0],
+			"arg1" : "" if len(formAsm) <= 1 else formAsm[1],
+			"arg2" : "" if len(formAsm) <= 2 else formAsm[2]
+		 }
 
 	constOps = xmlroot.find(".//CONST")
 	
@@ -118,7 +131,9 @@ uint32_t lreg;
 
 // アドレスをバイト/ワードアドレッシングに応じて変換
 #define addr(x) (x${"" if addressing == "byte" else "/*"} / 4${"" if addressing == "byte" else "*/"})
+#define rom_addr(x) (x${"" if rom_addressing == "byte" else "/*"} / 4${"" if rom_addressing == "byte" else "*/"})
 #define ADDRESSING_UNIT	${"4" if addressing == "byte" else "1"}
+#define ROM_ADDRESSING_UNIT	${"4" if rom_addressing == "byte" else "1"}
 
 //------------------------------------------------------------------
 
@@ -258,24 +273,24 @@ void initializeHeap()
 	% if constTableType == "writeSize":
 	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
 	int heapSize = ${"toggle_endian(ROM[0])" if endian == "BIG" else "ROM[0]"};
-	pc += ADDRESSING_UNIT;
-	##cerr << "heapSize = " << heapSize << endl;
+	pc += ROM_ADDRESSING_UNIT;
+	cerr << "heapSize = " << heapSize << endl;
 	while (heapSize > 0)
 	{
-		RAM[addr(HR)] = ${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"};
-		HR += ADDRESSING_UNIT;
+		RAM[addr(HR)] = ${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"};
 		heapSize -= ADDRESSING_UNIT;
-		pc += ADDRESSING_UNIT;
+		HR += ADDRESSING_UNIT;
+		pc += ROM_ADDRESSING_UNIT;
 	}
 	% elif constTableType == "toTag":
 	// constTableTagが来るまでを定数テーブルとする
-	while (${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"} != ${constTableTag})
+	while (${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"} != ${constTableTag})
 	{
-		RAM[addr(HR)] = ${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"};
+		RAM[addr(HR)] = ${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"};
 		HR += ADDRESSING_UNIT;
-		pc += ADDRESSING_UNIT;
+		pc += ROM_ADDRESSING_UNIT;
 	}
-	pc += ADDRESSING_UNIT;
+	pc += ROM_ADDRESSING_UNIT;
 	% endif
 }
 
@@ -327,7 +342,6 @@ int simulate(char* srcPath)
 		bool error = false;
 	
 		ZR = 0;
-##		cerr << "FR = " << FR << ", HR = " << HR << endl;
 
 		// フレーム/ヒープレジスタは絶対に負になることはない
 		if (FR < 0)
@@ -341,16 +355,28 @@ int simulate(char* srcPath)
 			break;
 		}
 
-		inst = ${"toggle_endian(ROM[addr(pc)])" if endian == "BIG" else "ROM[addr(pc)]"};
+		inst = ${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"};
 
-##		cerr << "pc = " << pc;
-##		cerr << ", inst = " << inst;		
 		opcode = get_opcode(inst);
-##		cerr << ", opcode = " << (int)opcode;
 		funct = get_funct(inst);
-##		cerr << ", funct = " << (int)funct << endl;
+% if debug_flg:
+/*		cerr << "pc = " << pc;
+		cerr << ", inst = " << inst;		
+		cerr << ", opcode = " << (int)opcode;
+		cerr << ", funct = " << (int)funct << endl;
+		for (int i = 0; i < 15; i++)
+		{
+			cerr << "RAM[" << i << "] = " << RAM[i] << endl;
+		}*/
+% endif
+		if (ireg[0] != 0)
+		{
+			cerr << "g0 = " << ireg[0] << endl;
+			exit(-1);
+		}
+
 		cnt++;
-		pc += ADDRESSING_UNIT;
+		pc += ROM_ADDRESSING_UNIT;
 
 		// 1億命令発行されるごとにピリオドを一個ずつ出力する（どれだけ命令が発行されたか視覚的にわかりやすくなる）
 		if (!(cnt % (100000000)))
@@ -376,7 +402,7 @@ int simulate(char* srcPath)
 						cerr << "\taddr = " << get_address(inst) << endl;
 		% endif
 		% for code in inst["code"]:
-						${code};
+						${code % getArgs(inst["formAsm"])};
 		% endfor
 						break;
 	% endfor
@@ -393,15 +419,15 @@ int simulate(char* srcPath)
 				cerr << "\trt = " << get_rt(inst) << ", " << IRT << endl;
 				cerr << "\trd = " << get_rd(inst) << ", " << IRD << endl;
 				cerr << "\timm = " << get_imm(inst) << ", " << IMM << endl;
-				cerr << "\taddr = " << get_address(inst) << endl;
+				cerr << "\taddr = " << get_address(inst) << endl;	
 	% endif
 	% for code in inst["code"]:
-				${code};
+				${code % getArgs(inst["formAsm"])};
 	% endfor
 				break;
 % endfor
 			default:
-				cerr << "invalid opcode. (opcode = " << opcode << ", funct = " << funct <<  ")" << endl;
+				cerr << "invalid opcode. (opcode = " << (int)opcode << ", funct = " << (int)funct <<  ", pc = " << pc << ")" << endl;
 				break;
 		}
 	}

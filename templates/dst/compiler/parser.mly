@@ -120,9 +120,19 @@ exp:
 | exp MINUS exp
     { get_syntax (Sub($1, $3)) }
 | exp AST exp
-    { if is_log2_exp $3 then get_syntax (sll_of_mul $1 $3) else get_syntax (Mul($1, $3)) }
+    {
+    	if is_log2_exp $3 then
+    		get_syntax (sll_of_mul $1 $3)
+    	else
+    		get_syntax (Mul($1, $3))
+    }
 | exp SLASH exp
-    { if is_log2_exp $3 then get_syntax (sll_of_div $1 $3) else assert false(*get_syntax (Div($1, $3))*) }
+    {
+    	if is_log2_exp $3 then
+    		get_syntax (sll_of_div $1 $3)
+    	else
+		    get_syntax (App (get_syntax (Var "div"), [$1; $3]))
+    }
 | exp EQUAL exp
     { get_syntax (Eq($1, $3)) }
 | exp LESS_GREATER exp
@@ -211,6 +221,4 @@ pat:
     { $1 @ [addtyp $3] }
 | IDENT COMMA IDENT
     { [addtyp $1; addtyp $3] }
-    
-    
 

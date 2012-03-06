@@ -60,7 +60,9 @@ uint32_t lreg;
 
 // アドレスをバイト/ワードアドレッシングに応じて変換
 #define addr(x) (x / 4)
+#define rom_addr(x) (x/* / 4*/)
 #define ADDRESSING_UNIT	4
+#define ROM_ADDRESSING_UNIT	1
 
 //------------------------------------------------------------------
 
@@ -198,13 +200,14 @@ void initializeHeap()
 {
 	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
 	int heapSize = ROM[0];
-	pc += ADDRESSING_UNIT;
+	pc += ROM_ADDRESSING_UNIT;
+	cerr << "heapSize = " << heapSize << endl;
 	while (heapSize > 0)
 	{
-		RAM[addr(HR)] = ROM[addr(pc)];
-		HR += ADDRESSING_UNIT;
+		RAM[addr(HR)] = ROM[rom_addr(pc)];
 		heapSize -= ADDRESSING_UNIT;
-		pc += ADDRESSING_UNIT;
+		HR += ADDRESSING_UNIT;
+		pc += ROM_ADDRESSING_UNIT;
 	}
 }
 
@@ -266,12 +269,18 @@ int simulate(char* srcPath)
 			break;
 		}
 
-		inst = ROM[addr(pc)];
+		inst = ROM[rom_addr(pc)];
 
 		opcode = get_opcode(inst);
 		funct = get_funct(inst);
+		if (ireg[0] != 0)
+		{
+			cerr << "g0 = " << ireg[0] << endl;
+			exit(-1);
+		}
+
 		cnt++;
-		pc += ADDRESSING_UNIT;
+		pc += ROM_ADDRESSING_UNIT;
 
 		// 1億命令発行されるごとにピリオドを一個ずつ出力する（どれだけ命令が発行されたか視覚的にわかりやすくなる）
 		if (!(cnt % (100000000)))
@@ -294,20 +303,8 @@ int simulate(char* srcPath)
 					case MUL_F:
 						IRD = IRS * IRT;
 						break;
-					case DIV_F:
-						IRD = IRS / IRT;
-						break;
 					case SLL_F:
 						IRD = IRS << IRT;
-						break;
-					case SRL_F:
-						IRD = IRS >> IRT;
-						break;
-					case NOR_F:
-						IRD = ~(IRS | IRT);
-						break;
-					case NOT_F:
-						IRD = ~IRS;
 						break;
 					case B_F:
 						pc = IRS;
@@ -317,6 +314,12 @@ int simulate(char* srcPath)
 						FR -= 4;
 						LR = pc;
 						pc = IRS;
+						break;
+					case FST_F:
+						RAM[(IRS + IRT) / 4] = FRD;
+						break;
+					case FLD_F:
+						FRD = RAM[(IRS + IRT) / 4];
 						break;
 					case HALT_F:
 						break;
@@ -340,16 +343,16 @@ int simulate(char* srcPath)
 						FRD = myfdiv(FRS, FRT);
 						break;
 					case FSQRT_F:
-						FRT = myfsqrt(FRS);
+						FRD = myfsqrt(FRS);
 						break;
 					case FABS_F:
-						FRT = myfabs(FRS);
+						FRD = myfabs(FRS);
 						break;
 					case FMOV_F:
-						FRT = FRS;
+						FRD = FRS;
 						break;
 					case FNEG_F:
-						FRT = myfneg(FRS);
+						FRD = myfneg(FRS);
 						break;
 					default:
 						break;
@@ -359,7 +362,7 @@ int simulate(char* srcPath)
 				switch (funct)
 				{
 					case INPUT_F:
-						IRS = getchar() & 0xff;
+						IRD = getchar() & 0xff;
 						break;
 					case OUTPUT_F:
 						cout << (char)IRS << flush;
@@ -389,32 +392,23 @@ int simulate(char* srcPath)
 			case MVHI:
 				IRS = ((uint32_t)IMM << 16) | (IRS & 0xffff);
 				break;
-			case FMVLO:
-				FRS = (FRS & 0xffff0000) | (IMM & 0xffff);
-				break;
-			case FMVHI:
-				FRS = ((uint32_t)IMM << 16) | (FRS & 0xffff);
-				break;
 			case JMP:
 				pc = get_address(inst);
 				break;
 			case JEQ:
-				if (IRS == IRT) pc += IMM - 4;
+				if (IRS == IRT) pc += IMM - 1;
 				break;
 			case JNE:
-				if (IRS != IRT) pc += IMM - 4;
+				if (IRS != IRT) pc += IMM - 1;
 				break;
 			case JLT:
-				if (IRS > IRT) pc += IMM - 4;
+				if (IRS <  IRT) pc += IMM - 1;
 				break;
 			case FJEQ:
-				if (asF(FRS) == asF(FRT)) pc += IMM - 4;
-				break;
-			case FJNE:
-				if (asF(FRS) != asF(FRT)) pc += IMM - 4;
+				if (asF(FRS) == asF(FRT)) pc += IMM - 1;
 				break;
 			case FJLT:
-				if (asF(FRS) > asF(FRT)) pc += IMM - 4;
+				if (asF(FRS) < asF(FRT)) pc += IMM - 1;
 				break;
 			case CALL:
 				RAM[FR / 4] = LR;
@@ -433,12 +427,6 @@ int simulate(char* srcPath)
 			case LD:
 				IRD = RAM[(IRS + IRT) / 4];
 				break;
-			case FST:
-				RAM[(IRS + IRT) / 4] = FRD;
-				break;
-			case FLD:
-				FRD = RAM[(IRS + IRT) / 4];
-				break;
 			case STI:
 				RAM[(IRS - IMM) / 4] = IRT;
 				break;
@@ -452,7 +440,7 @@ int simulate(char* srcPath)
 				FRT = RAM[(IRS - IMM) / 4];
 				break;
 			default:
-				cerr << "invalid opcode. (opcode = " << opcode << ", funct = " << funct <<  ")" << endl;
+				cerr << "invalid opcode. (opcode = " << (int)opcode << ", funct = " << (int)funct <<  ", pc = " << pc << ")" << endl;
 				break;
 		}
 	}

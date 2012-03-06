@@ -57,8 +57,8 @@ uint32_t getAddr(string label, uint32_t base = 0)
 	uint32_t addr = labels[label];
 	
 //	cerr << "addr of " << label << " is " << addr << endl; 
-	
-	return  addr - base;
+
+	return  (addr - base) / 4;
 }
 
 //-----------------------------------------------------------------------------
@@ -213,7 +213,6 @@ void resolveLabels()
 			case JNE:
 			case JLT:
 			case FJEQ:
-			case FJNE:
 			case FJLT:
 				if (labelNames.count(i) <= 0)
 				{
@@ -230,8 +229,6 @@ void resolveLabels()
 			case SRLI:
 			case MVLO:
 			case MVHI:
-			case FMVLO:
-			case FMVHI:
 			case STI:
 			case LDI:
 			case FSTI:

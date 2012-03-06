@@ -14,42 +14,85 @@
 		else:
 			return "DEFINE_%s(_%s, %s);" % (format, name, op)
 
+	def getInst(type):
+		inst = xmlroot.find(".//" + type)
+		assert inst is not None, "inst is None(" + type + ")"
+		return inst
+	
 	def getName(type):
-		inst = xmlroot.find(".//" + type)
-		assert not(inst is None), (type + " was not found")
-		name = inst.get("name")
-		assert not(name is None), (type + "'s name was not found")
-		return name	
-		
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+
 	def isUse(type):
-		inst = xmlroot.find(".//" + type)
-		assert not(inst is None), (type + " was not found")
-		return "false" != inst.get("use", "true")
+		use = getInst(type).get("use", "true")
+		return use != "false"
+
+	def getFormName(formAsm):
+		result = "form"
+		for e in map(lambda x: x.upper(), formAsm):
+			if e in ["IRS", "IRT", "IRD"]:
+				result += "R"
+			elif e in ["FRS", "FRT", "FRD"]:
+				result += "F"
+			elif e in ["IMM"]:
+				result += "I"
+			elif e in ["LABEL"]:
+				result += "L"
+			elif e in ["FLOAT"]:
+				result += "D"
+			elif e in [""]:
+				result += ""
+			else:
+				assert False, "formAsm must be IRS, FRS, IRT, FRT, IRD, FRD, IMM, LABEL or FLOAT.(%s)" % e
+		return result
 
 	def getArgs(formAsm):
-		if len(formAsm) == 0:
-			return ""
-		args = ['&rs', '&rt', '&rd'][:len(filter(lambda ch: ch in 'RF', formAsm))]
-		diff = len(formAsm) - len(args)
-		forward = xmlroot.find(".//instructions").get("forward") != "false"
-		if diff == 0:
-			if forward:
-				args = args[-1:] + args[0:-1]
-		elif diff == 1:
-			other = filter(lambda ch: ch in 'ILD', formAsm)
-			assert len(other) == 1, "len(other) is %d. This must be 1." % len(other)
-			lastArg = '&imm' if other[0] == 'I' else 'label' if other[0] == 'L' else '&d'
-			if forward:
-				args = args[-1:] + args[0:-1] + [lastArg]
-			else:
-				args.insert(-1, lastArg)
-		else:
-			assert False, "num of 'I' or 'J' must be no more than 1"
-		assert len(args) >= 1, "len(args) less than 1"
 		result = ""
-		for a in args:
-			result += ", " + a
+		for e in map(lambda x: x.upper(), formAsm):
+			if e in ["IRS", "FRS"]:
+				result += ", &rs"
+			elif e in ["IRT", "FRT"]:
+				result += ", &rt"
+			elif e in ["IRD", "FRD"]:
+				result += ", &rd"
+			elif e in ["IMM"]:
+				result += ", &imm"
+			elif e in ["LABEL"]:
+				result += ", label"
+			elif e in ["FLOAT"]:
+				result += ", &d"
+			elif e in [""]:
+				result += ""
+			else:
+				assert False, "formAsm must be IRS, FRS, IRT, FRT, IRD, FRD, IMM, LABEL or FLOAT.(%s)" % e
 		return result
+
+	## TODO
+##	def getArgs(formAsm):
+##		if len(formAsm) == 0:
+##			return ""
+##		args = ['&rs', '&rt', '&rd'][:len(filter(lambda ch: ch in 'RF', formAsm))]
+##		diff = len(formAsm) - len(args)
+##		forward = xmlroot.find(".//instructions").get("forward") != "false"
+##		if diff == 0:
+##			if forward:
+##				args = args[-1:] + args[0:-1]
+##		elif diff == 1:
+##			other = filter(lambda ch: ch in 'ILD', formAsm)
+##			assert len(other) == 1, "len(other) is %d. This must be 1." % len(other)
+##			lastArg = '&imm' if other[0] == 'I' else 'label' if other[0] == 'L' else '&d'
+##			if forward:
+##				args = args[-1:] + args[0:-1] + [lastArg]
+##			else:
+##				args.insert(-1, lastArg)
+##		else:
+##			assert False, "num of 'I' or 'J' must be no more than 1"
+##		assert len(args) >= 1, "len(args) less than 1"
+##		result = ""
+##		for a in args:
+##			result += ", " + a
+##		return result
 
 	mnemonics = xmlroot.find(".//mnemonics")
 %>#include "assembler.h"
@@ -101,11 +144,18 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 % for inst in instInfo:
 	% if isUse(inst["type"]):
 	if (eq(instName, "${getName(inst["type"])}"))
-	{<% formAsm = inst["formAsm"] %>
-		int n = sscanf(buffer, form${formAsm}, dummy${getArgs(formAsm)});
+	{<% 
+		formAsm = inst["formAsm"]
+		xml_formAsm = getInst(inst["type"]).get("formAsm")
+		if xml_formAsm is not None:
+			xml_formAsm_list = filter(lambda x: x != "", map(lambda x: x.strip(), xml_formAsm.split(',')))
+			if len(xml_formAsm_list) == len(formAsm):
+				formAsm = xml_formAsm_list
+	%>
+		int n = sscanf(buffer, ${getFormName(formAsm)}, dummy${getArgs(formAsm)});
 		if (n == ${len(formAsm) + 1})
 		{
-		% if 'L' in formAsm:
+		% if "LABEL" in formAsm:
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
@@ -140,10 +190,10 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 % for mnemonic in mnemonics:
 	% if mnemonic.get("use") != "false":
 	if (eq(instName, "${mnemonic.get("name")}"))
-	{<% iter = mnemonic.getiterator()[1:]; formAsm = mnemonic.get("formAsm")%>
-		if (sscanf(mnemonicBuffer[0], form${formAsm}, dummy${getArgs(formAsm)}) == ${len(formAsm) + 1})
+	{<% iter = mnemonic.getiterator()[1:]; formAsm = filter(lambda x: x != "", map(lambda x: x.strip(), mnemonic.get("formAsm").split(','))) %>
+		if (sscanf(mnemonicBuffer[0], ${getFormName(formAsm)}, dummy${getArgs(formAsm)}) == ${len(formAsm) + 1})
 		{
-		% if 'L' in formAsm:
+		% if "LABEL" in formAsm:
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 		% endif

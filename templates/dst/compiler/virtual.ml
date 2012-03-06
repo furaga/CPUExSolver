@@ -108,11 +108,11 @@ let rec g env =
 				concat (
 					concat (
 						(* 	let reg_hp = st reg_hp reg_bottom !GlobalEnv.offset + 4 in *)
-						(Ans (St (reg_hp, reg_0, C (- !GlobalEnv.offset + 4 + !GlobalEnv.offset))))
+						(Ans (St (reg_hp, reg_0, C (-4 - !GlobalEnv.offset))))
 					)
 			      	(Id.gentmp Type.Unit, Type.Unit)
 					(*	let reg_hp = reg_bottom - !GlobalEnv.offsets[x] in *)
-					(Ans (Sub (reg_0, C (- !GlobalEnv.offset + M.find x !GlobalEnv.offsets))))
+					(Ans (Add (reg_0, C (!GlobalEnv.offset - M.find x !GlobalEnv.offsets))))
 				)
 				(reg_hp, Type.Int)
 				(* 	let x = e1' in *)
@@ -120,7 +120,7 @@ let rec g env =
 			)
 			(x, Type.Int)
 			(* 	let reg_hp = reg_bottom - !GlobalEnv.offset + 4  in *)
-			(Ans (Ld (reg_0, C (- !GlobalEnv.offset + 4 + !GlobalEnv.offset))))
+			(Ans (Ld (reg_0, C (-4 - !GlobalEnv.offset))))
 		)
 		(reg_hp, Type.Int)
 		(* e2' *)

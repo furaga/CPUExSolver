@@ -1,0 +1,205 @@
+<%
+	## DEFINE_R(_mov, SPECIAL, MOV_F) みたいな文を出力
+	def defineInstruction(type, format):
+		inst = xmlroot.find(".//" + type)
+		name = inst.get("name").strip()
+		## opが"SPACIAL"などの文字列だったらそのまま使う
+		op = inst.get("op", "0").strip()
+		op = op if op.isalpha() else name.upper()
+		funct = name.upper() + "_F"
+		assert format in "RIJ", "invalid format. formBin must be 'R', 'I' or 'J'"
+		if format == "R":
+			## shaftは使わない
+			return "DEFINE_R(_%s, %s, 0, %s);" % (name, op, funct)
+		else:
+			return "DEFINE_%s(_%s, %s);" % (format, name, op)
+
+	def getInst(type):
+		inst = xmlroot.find(".//" + type)
+		assert inst is not None, "inst is None(" + type + ")"
+		return inst
+	
+	def getName(type):
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+
+	def isUse(type):
+		use = getInst(type).get("use", "true")
+		return use != "false"
+
+	def getFormName(formAsm):
+		result = "form"
+		for e in map(lambda x: x.upper(), formAsm):
+			if e in ["IRS", "IRT", "IRD"]:
+				result += "R"
+			elif e in ["FRS", "FRT", "FRD"]:
+				result += "F"
+			elif e in ["IMM"]:
+				result += "I"
+			elif e in ["LABEL"]:
+				result += "L"
+			elif e in ["FLOAT"]:
+				result += "D"
+			elif e in [""]:
+				result += ""
+			else:
+				assert False, "formAsm must be IRS, FRS, IRT, FRT, IRD, FRD, IMM, LABEL or FLOAT.(%s)" % e
+		return result
+
+	def getArgs(formAsm):
+		result = ""
+		for e in map(lambda x: x.upper(), formAsm):
+			if e in ["IRS", "FRS"]:
+				result += ", &rs"
+			elif e in ["IRT", "FRT"]:
+				result += ", &rt"
+			elif e in ["IRD", "FRD"]:
+				result += ", &rd"
+			elif e in ["IMM"]:
+				result += ", &imm"
+			elif e in ["LABEL"]:
+				result += ", label"
+			elif e in ["FLOAT"]:
+				result += ", &d"
+			elif e in [""]:
+				result += ""
+			else:
+				assert False, "formAsm must be IRS, FRS, IRT, FRT, IRD, FRD, IMM, LABEL or FLOAT.(%s)" % e
+		return result
+
+	## TODO
+##	def getArgs(formAsm):
+##		if len(formAsm) == 0:
+##			return ""
+##		args = ['&rs', '&rt', '&rd'][:len(filter(lambda ch: ch in 'RF', formAsm))]
+##		diff = len(formAsm) - len(args)
+##		forward = xmlroot.find(".//instructions").get("forward") != "false"
+##		if diff == 0:
+##			if forward:
+##				args = args[-1:] + args[0:-1]
+##		elif diff == 1:
+##			other = filter(lambda ch: ch in 'ILD', formAsm)
+##			assert len(other) == 1, "len(other) is %d. This must be 1." % len(other)
+##			lastArg = '&imm' if other[0] == 'I' else 'label' if other[0] == 'L' else '&d'
+##			if forward:
+##				args = args[-1:] + args[0:-1] + [lastArg]
+##			else:
+##				args.insert(-1, lastArg)
+##		else:
+##			assert False, "num of 'I' or 'J' must be no more than 1"
+##		assert len(args) >= 1, "len(args) less than 1"
+##		result = ""
+##		for a in args:
+##			result += ", " + a
+##		return result
+
+	mnemonics = xmlroot.find(".//mnemonics")
+%>#include "assembler.h"
+
+% for info in instInfo:
+	% if xmlroot.find(".//" + info["type"]).get("use", "true") != "false":
+${defineInstruction(info["type"], info["formBin"])}
+	% endif
+% endfor
+
+typedef union
+{
+	uint32_t i;
+	float f;
+} conv;
+
+uint32_t double2bin(double d)
+{
+	conv f;
+	f.f = (float)d;
+	return f.i;
+}
+
+uint32_t gethi(double d)
+{
+	return (double2bin(d) >> 16) & 0xffff;
+}
+
+uint32_t getlo(double d)
+{
+	return double2bin(d) & 0xffff;
+}
+
+//-----------------------------------------------------------------------------
+//
+// 命令コマンドを解釈してバイナリに変換
+//
+//-----------------------------------------------------------------------------
+bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uint32_t currentLine, uint32_t& code, bool& useLabel)
+{
+	uint32_t rs = 0;
+	uint32_t rt = 0;
+	uint32_t rd = 0;
+	uint32_t imm = 0;
+	double d = 0;
+	char label[MAX_LINE_SIZE];
+	char dummy[MAX_LINE_SIZE];
+
+% for inst in instInfo:
+	% if isUse(inst["type"]):
+	if (eq(instName, "${getName(inst["type"])}"))
+	{<% formAsm = inst["formAsm"] if getInst(inst["type"]).get("formAsm") is None else map(lambda x: x.strip(), getInst(inst["type"]).get("formAsm").split(',')) %>
+		int n = sscanf(buffer, ${getFormName(formAsm)}, dummy${getArgs(formAsm)});
+		if (n == ${len(formAsm) + 1})
+		{
+		% if 'L' in formAsm:
+			labelNames[currentLine] = string(label);
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+			useLabel = true;
+		% endif
+			code = _${getName(inst["type"])}(${"rs, rt, rd" if inst["formBin"] == 'R' else "rs, rt, imm" if inst["formBin"] == 'I' else "0"});
+			return true;
+		}
+	}
+	% endif
+% endfor
+	
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+//
+// 擬似命令（ニーモニック）の解決
+// 返り値は分解された各命令がラベルを使うかどうか
+//
+//-----------------------------------------------------------------------------
+vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<uint32_t, string>& labelNames, uint32_t currentLine)
+{
+	uint32_t rs = 0;
+	uint32_t rt = 0;
+	uint32_t rd = 0;
+	uint32_t imm = 0;
+	double d = 0;
+	char label[MAX_LINE_SIZE];
+	char dummy[MAX_LINE_SIZE];
+	vector<bool> useLabels;
+
+% for mnemonic in mnemonics:
+	% if mnemonic.get("use") != "false":
+	if (eq(instName, "${mnemonic.get("name")}"))
+	{<% iter = mnemonic.getiterator()[1:]; formAsm = map(lambda x: x.strip(), mnemonic.get("formAsm").split(',')) %>
+		if (sscanf(mnemonicBuffer[0], ${getFormName(formAsm)}, dummy${getArgs(formAsm)}) == ${len(formAsm) + 1})
+		{
+		% if 'L' in formAsm:
+			labelNames[currentLine] = string(label);
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+		% endif
+		% for i, inst in enumerate(iter):
+			sprintf(mnemonicBuffer[${i}], ${inst.get("command")});
+			useLabels.push_back(${"true" if inst.get("useLabel") == "true" else "false"});
+		% endfor
+		}
+		return	useLabels;
+	}
+	% endif
+% endfor
+	useLabels.push_back(false);
+	return useLabels;
+}
+

@@ -1,3 +1,4 @@
+## 条件分岐は${getName("BLT")}, fljtは絶対あるものとする。
 <%
 	r = xmlroot.find(".//intRegs").get("prefix") % ()
 	f = xmlroot.find(".//floatRegs").get("prefix") % ()
@@ -16,240 +17,289 @@
 	constTableType = xmlroot.find(".//binary").get("constTableType").strip()
 	addressing = xmlroot.find(".//binary").get("addressing")
 	addressingUnit = 4 if addressing == "byte" else 1
+
+	def getInst(type):
+		inst = xmlroot.find(".//" + type)
+		assert inst is not None, "inst is None(" + type + ")"
+		return inst
+	
+	def getName(type):
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+
+	def isUse(type):
+		use = getInst(type).get("use", "true")
+		return use != "false"
+	
+	def addi(rt, rs, imm):
+		if isUse("ADDI"):
+			return "%s %s, %s, %s" % (getName("ADDI"), rt, rs, str(imm))
+		else:
+			ans = "%s %s, %s\n" % (getName("SETHI"), IREGS[-2], str((int(imm) >> 16) & 0xffff))
+			ans += "\t%s %s, %s\n" % (getName("SETLO"), IREGS[-2], str(int(imm) & 0xffff))
+			ans += "\t%s %s, %s, %s" % (getName("ADD"), rt, rs, IREGS[-2])
+			return ans
+
+	def fsub(rd, rs, rt):
+		if isUse("FSUB"):
+			return "%s %s, %s, %s" % (getName("FSUB"), rd, rs, rt)
+		else:
+			ans = "%s %s, %s\n" % (getName("FNEG"), FREGS[-1], rt)
+			ans += "\t%s %s, %s, %s" % (getName("FADD"), rd, rs, FREGS[-1])
+			return ans
+
+	def fset(rs, hi, lo, ss):
+		if isUse("FSETHI") and isUse("FSETLO"):
+			ans = "%s %s, %s\n" % (getName("FSETHI"), rs, str(hi))
+			ans += "\t%s %s, %s" % (getName("FSETLO"), rs, str(lo))
+			return ans
+		else:
+			ans = "%s %s, %s\n" % (getName("SETHI"), IREGS[-2], str(hi))
+			ans += "\t%s %s, %s\n" % (getName("SETLO"), IREGS[-2], str(lo))
+			ans += "\t%s %s, %s, %s\n" % (getName("STI"), IREGS[-2], FR, str(ss))
+			ans += "\t%s %s, %s, %s\n" % (getName("FLDI"), rs, FR, str(ss))
+			return ans
+
+	def call(label):
+		if isUse("CALL") and isUse("CALLREG") and isUse("RETURN"):
+			return "%s %s" % (getName("CALL"), label)
+		else:
+			assert isUse("JMP_LNK") and isUse("JMPREG_LNK"), "[call()]%s and %s must be supported." % (getName("JMP_LNK"), getName("JMPREG_LNK"))
+			ans = "%s %s, %s, 0\n" % (getName("STI"), LR, FR)
+			ans += "\t" + (addi(FR, FR, -addressingUnit)) + "\n"
+			ans += "\t%s %s\n" % (getName("JMP_LNK"), label)
+			ans += "\t" + (addi(FR, FR, addressingUnit)) + "\n"
+			ans += "\t%s %s, %s, 0" % (getName("LDI"), LR, FR)
+			return ans
+
+	def _return():
+		if isUse("CALL") and isUse("CALLREG") and isUse("RETURN"):
+			return getName("RETURN")
+		else:
+			# LRは整数レジスタの一つのはず
+			# リンクレジスタの退避とかは_call()の方で都合をつける
+			assert LR != "", "[_return()] LR must be one of the intRegs."
+			return "%s %s" % (getName("JMPREG"), LR)
+
 %>${".init_heap_size\t0" if constTableType != "no_use" else ""}
 ##FLOAT_ONE:		${comment} 1.0
 ##	.long 0x3f800000
-##FLOAT_MONE:		${comment} -1.0
-##	.long 0xbf800000
 ##FLOAT_MAGICI:	${comment} 8388608
-##	.long 0x800000
+##	.long 0x00800000
 ##FLOAT_MAGICF:	${comment} 8388608.0
 ##	.long 0x4b000000
 ##FLOAT_MAGICFHX:	${comment} 1258291200
 ##	.long 0x4b000000
 ${comment}----------------------------------------------------------------------
 ${comment}
-${comment} 		↓　ここから lib_asm.s
+${comment} lib_asm.s
 ${comment}
 ${comment}----------------------------------------------------------------------
 
 ${comment} * create_array
 min_caml_create_array:
 % if addressing == "byte":
-	slli ${IREGS[0]}, ${IREGS[0]}, 2
+	${getName("SLLI")} ${IREGS[0]}, ${IREGS[0]}, 2
 % endif
-	add ${IREGS[2]}, ${IREGS[0]}, ${HR}
-	mov ${IREGS[0]}, ${HR}
+	${getName("ADD")} ${IREGS[2]}, ${IREGS[0]}, ${HR}
+	${getName("MOV")} ${IREGS[0]}, ${HR}
 CREATE_ARRAY_LOOP:
-	jlt ${IREGS[2]}, ${HR}, CREATE_ARRAY_END
-	jeq ${IREGS[2]}, ${HR}, CREATE_ARRAY_END
-	sti ${IREGS[1]}, ${HR}, 0
-	addi ${HR}, ${HR}, ${addressingUnit}
-	jmp CREATE_ARRAY_LOOP
-CREATE_ARRAY_END:
-	return
+	${getName("BLT")}  ${HR}, ${IREGS[2]}, CREATE_ARRAY_CONTINUE
+	${_return()}
+CREATE_ARRAY_CONTINUE:
+	${getName("STI")} ${IREGS[1]}, ${HR}, 0	
+	${addi(HR, HR, addressingUnit)}	
+	${getName("BRANCH")} CREATE_ARRAY_LOOP
 
 ${comment} * create_float_array
 min_caml_create_float_array:
 % if addressing == "byte":
-	slli ${IREGS[0]}, ${IREGS[0]}, 2
+	${getName("SLLI")} ${IREGS[0]}, ${IREGS[0]}, 2
 % endif
-	add ${IREGS[1]}, ${IREGS[0]}, ${HR}
-	mov ${IREGS[0]}, ${HR}
+	${getName("ADD")} ${IREGS[1]}, ${IREGS[0]}, ${HR}
+	${getName("MOV")} ${IREGS[0]}, ${HR}
 CREATE_FLOAT_ARRAY_LOOP:
-	jlt ${IREGS[1]}, ${HR}, CREATE_FLOAT_ARRAY_END
-	jeq ${IREGS[1]}, ${HR}, CREATE_FLOAT_ARRAY_END
-	fsti ${FREGS[0]}, ${HR}, 0
-	addi ${HR}, ${HR}, ${addressingUnit}
-	jmp CREATE_FLOAT_ARRAY_LOOP
-CREATE_FLOAT_ARRAY_END:
-	return
+	${getName("BLT")} ${HR}, ${IREGS[1]}, CREATE_FLOAT_ARRAY_CONTINUE
+	${_return()}
+CREATE_FLOAT_ARRAY_CONTINUE:
+	${getName("FSTI")} ${FREGS[0]}, ${HR}, 0
+	${addi(HR, HR, addressingUnit)}
+	${getName("BRANCH")} CREATE_FLOAT_ARRAY_LOOP
 
 ${comment} * floor		${FREGS[0]} + MAGICF - MAGICF
 min_caml_floor:
-	fmov ${FREGS[1]}, ${FREGS[0]}
+	${getName("FMOV")} ${FREGS[1]}, ${FREGS[0]}
 	${comment} ${FREGS[4]} <- 0.0
 	${comment} fset ${FREGS[4]}, 0.0
-	fmvhi ${FREGS[4]}, 0
-	fmvlo ${FREGS[4]}, 0
-	fjlt ${FREGS[4]}, ${FREGS[0]}, FLOOR_POSITIVE	${comment} if (${FREGS[4]} <= ${FREGS[0]}) goto FLOOR_PISITIVE
-	fjeq ${FREGS[4]}, ${FREGS[0]}, FLOOR_POSITIVE
-FLOOR_NEGATIVE:
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	${comment} ${FREGS[2]} <- 8388608.0(0x4b000000)
-	fmvhi ${FREGS[2]}, 19200
-	fmvlo ${FREGS[2]}, 0
-	fjlt ${FREGS[0]}, ${FREGS[2]}, FLOOR_NEGATIVE_MAIN
-	fjeq ${FREGS[0]}, ${FREGS[2]}, FLOOR_NEGATIVE_MAIN
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	return
-FLOOR_NEGATIVE_MAIN:
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fneg ${FREGS[1]}, ${FREGS[1]}
-	fjlt ${FREGS[1]}, ${FREGS[0]}, FLOOR_RET2
-	fjeq ${FREGS[1]}, ${FREGS[0]}, FLOOR_RET2
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	${comment} ${FREGS[3]} <- 1.0
-	${comment} fset ${FREGS[3]}, 1.0
-	fmvhi ${FREGS[3]}, 16256
-	fmvlo ${FREGS[3]}, 0
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[3]}
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	return
+	${fset(FREGS[4], 0, 0, 0)}
+	${getName("FBLT")} ${FREGS[0]}, ${FREGS[4]}, FLOOR_NEGATIVE	${comment} if (${FREGS[4]} <= ${FREGS[0]}) goto FLOOR_PISITIVE
 FLOOR_POSITIVE:
 	${comment} ${FREGS[2]} <- 8388608.0(0x4b000000)
-	fmvhi ${FREGS[2]}, 19200
-	fmvlo ${FREGS[2]}, 0
-	fjlt ${FREGS[0]}, ${FREGS[2]}, FLOOR_POSITIVE_MAIN
-	fjeq ${FREGS[0]}, ${FREGS[2]}, FLOOR_POSITIVE_MAIN
-	return
+	${fset(FREGS[2], 19200, 0, 0)}
+	${getName("FBLT")} ${FREGS[2]}, ${FREGS[0]}, FLOOR_POSITIVE_RET
 FLOOR_POSITIVE_MAIN:
-	fmov ${FREGS[1]}, ${FREGS[0]}
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fsti ${FREGS[0]}, ${FR}, 0
-	ldi ${IREGS[1]}, ${FR}, 0
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fsti ${FREGS[0]}, ${FR}, 0
-	ldi ${IREGS[1]}, ${FR}, 0
-	fjlt ${FREGS[0]}, ${FREGS[1]}, FLOOR_RET
-	fjeq ${FREGS[0]}, ${FREGS[1]}, FLOOR_RET
+	${getName("FMOV")} ${FREGS[1]}, ${FREGS[0]}
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
+	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${getName("LDI")} ${IREGS[1]}, ${FR}, 0
+	${fsub(FREGS[0], FREGS[0], FREGS[2])}
+	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${getName("LDI")} ${IREGS[1]}, ${FR}, 0
+	${getName("FBLT")} ${FREGS[1]}, ${FREGS[0]}, FLOOR_POSITIVE_RET
+	${_return()}
+FLOOR_POSITIVE_RET:
 	${comment} ${FREGS[3]} <- 1.0
 	${comment} fset ${FREGS[3]}, 1.0
-	fmvhi ${FREGS[3]}, 16256
-	fmvlo ${FREGS[3]}, 0
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[3]}
-FLOOR_RET:
-	return
-FLOOR_RET2:
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	return
+	${fset(FREGS[3], 16256, 0, 0)}
+	${fsub(FREGS[0], FREGS[0], FREGS[3])}
+	${_return()}
+FLOOR_NEGATIVE:
+	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
+	${comment} ${FREGS[2]} <- 8388608.0(0x4b000000)
+	${fset(FREGS[2], 19200, 0, 0)}
+	${getName("FBLT")} ${FREGS[2]}, ${FREGS[0]}, FLOOR_NEGATIVE_RET
+FLOOR_NEGATIVE_MAIN:
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
+	${fsub(FREGS[0], FREGS[0], FREGS[2])}
+	${getName("FNEG")} ${FREGS[1]}, ${FREGS[1]}
+	${getName("FBLT")} ${FREGS[0]}, ${FREGS[1]}, FLOOR_NEGATIVE_PRE_RET
+	${getName("BRANCH")} FLOOR_NEGATIVE_RET
+FLOOR_NEGATIVE_PRE_RET:
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
+	${comment} ${FREGS[3]} <- 1.0
+	${comment} fset ${FREGS[3]}, 1.0
+	${fset(FREGS[3], 16256, 0, 0)}
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[3]}
+	${fsub(FREGS[0], FREGS[0], FREGS[2])}
+FLOOR_NEGATIVE_RET:
+	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
+	${_return()}
 	
 min_caml_ceil:
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	call min_caml_floor
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	return
+	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
+	${call("min_caml_floor")}
+	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
+	${_return()}
 
 ${comment} * float_of_int
 min_caml_float_of_int:
-	jlt ${ZR}, ${IREGS[0]}, ITOF_MAIN		${comment} if (${ZR} <= ${IREGS[0]}) goto ITOF_MAIN
-	jeq ${ZR}, ${IREGS[0]}, ITOF_MAIN
-	sub ${IREGS[0]}, ${ZR}, ${IREGS[0]}
-	call ITOF_MAIN
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	return
+	${getName("BLT")} ${IREGS[0]}, ${ZR}, ITOF_NEGATIVE_MAIN		${comment} if (${ZR} <= ${IREGS[0]}) goto ITOF_MAIN
 ITOF_MAIN:
 	${comment} ${FREGS[1]} <- 8388608.0(0x4b000000)
-	fmvhi ${FREGS[1]}, 19200
-	fmvlo ${FREGS[1]}, 0
+	${fset(FREGS[1], 19200, 0, 0)}
 	${comment} ${IREGS[1]} <- 0x4b000000
-	mvhi ${IREGS[1]}, 19200
-	mvlo ${IREGS[1]}, 0
+	${getName("SETHI")} ${IREGS[1]}, 19200
+	${getName("SETLO")} ${IREGS[1]}, 0
 	${comment} ${IREGS[2]} <- 0x00800000
-	mvhi ${IREGS[2]}, 128
-	mvlo ${IREGS[2]}, 0
-	jlt ${IREGS[2]}, ${IREGS[0]}, ITOF_BIG
-	jeq ${IREGS[2]}, ${IREGS[0]}, ITOF_BIG
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	sti ${IREGS[0]}, ${FR}, 0
-	fldi ${FREGS[0]}, ${FR}, 0
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[1]}
-	return
+	${getName("SETHI")} ${IREGS[2]}, 128
+	${getName("SETLO")} ${IREGS[2]}, 0
+	${getName("BLT")} ${IREGS[0]}, ${IREGS[2]}, ITOF_SMALL
 ITOF_BIG:
 	${comment} ${FREGS[2]} <- 0.0
 	${comment} fset ${FREGS[2]}, 0.0
-	fmvhi ${FREGS[2]}, 0
-	fmvlo ${FREGS[2]}, 0
+	${fset(FREGS[2], 0, 0, 0)}
 ITOF_LOOP:
-	sub ${IREGS[0]}, ${IREGS[0]}, ${IREGS[2]}
-	fadd ${FREGS[2]}, ${FREGS[2]}, ${FREGS[1]}
-	jlt ${IREGS[2]}, ${IREGS[0]}, ITOF_LOOP
-	jeq ${IREGS[2]}, ${IREGS[0]}, ITOF_LOOP
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	sti ${IREGS[0]}, ${FR}, 0
-	fldi ${FREGS[0]}, ${FR}, 0
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[1]}
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	return
+	${getName("SUB")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[2]}
+	${getName("FADD")} ${FREGS[2]}, ${FREGS[2]}, ${FREGS[1]}
+	${getName("BLT")} ${IREGS[0]}, ${IREGS[2]}, ITOF_RET
+	${getName("BRANCH")} ITOF_LOOP
+ITOF_RET:
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${getName("STI")} ${IREGS[0]}, ${FR}, 0
+	${getName("FLDI")}  ${FREGS[0]}, ${FR}, 0
+	${fsub(FREGS[0], FREGS[0], FREGS[1])}
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
+	${_return()}
+ITOF_SMALL:
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${getName("STI")} ${IREGS[0]}, ${FR}, 0
+	${getName("FLDI")}  ${FREGS[0]}, ${FR}, 0
+	${fsub(FREGS[0], FREGS[0], FREGS[1])}
+	${_return()}
+ITOF_NEGATIVE_MAIN:
+	${getName("SUB")} ${IREGS[0]}, ${ZR}, ${IREGS[0]}
+
+	${call("ITOF_MAIN")}
+
+	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
+	${_return()}
 
 ${comment} * int_of_float
 min_caml_int_of_float:
 	${comment} ${FREGS[1]} <- 0.0
 	${comment} fset ${FREGS[1]}, 0.0
-	fmvhi ${FREGS[1]}, 0
-	fmvlo ${FREGS[1]}, 0
-	fjlt ${FREGS[1]}, ${FREGS[0]}, FTOI_MAIN			${comment} if (0.0 <= ${FREGS[0]}) goto FTOI_MAIN
-	fjeq ${FREGS[1]}, ${FREGS[0]}, FTOI_MAIN
-	fneg ${FREGS[0]}, ${FREGS[0]}
-	call FTOI_MAIN
-	sub ${IREGS[0]}, ${ZR}, ${IREGS[0]}
-	return
-FTOI_MAIN:
-	call min_caml_floor
+	${fset(FREGS[1], 0, 0, 0)}
+	${getName("FBLT")} ${FREGS[0]}, ${FREGS[1]}, FTOI_NEGATIVE_MAIN			${comment} if (0.0 <= ${FREGS[0]}) goto FTOI_MAIN
+FTOI_POSITIVE_MAIN:
+	${call("min_caml_floor")}
 	${comment} ${FREGS[2]} <- 8388608.0(0x4b000000)
-	fmvhi ${FREGS[2]}, 19200
-	fmvlo ${FREGS[2]}, 0
+	${fset(FREGS[2], 19200, 0, 0)}
 	${comment} ${IREGS[1]} <- 0x4b000000
-	mvhi ${IREGS[1]}, 19200
-	mvlo ${IREGS[1]}, 0
-	fjlt ${FREGS[2]}, ${FREGS[0]}, FTOI_BIG		${comment} if (MAGICF <= ${FREGS[0]}) goto FTOI_BIG
-	fjeq ${FREGS[2]}, ${FREGS[0]}, FTOI_BIG
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fsti ${FREGS[0]}, ${FR}, 0
-	ldi ${IREGS[0]}, ${FR}, 0
-	sub ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	return
-FTOI_BIG:
+	${getName("SETHI")} ${IREGS[1]}, 19200
+	${getName("SETLO")} ${IREGS[1]}, 0
+	${getName("FBLT")} ${FREGS[0]}, ${FREGS[2]}, FTOI_SMALL		${comment} if (MAGICF <= ${FREGS[0]}) goto FTOI_BIG
 	${comment} ${IREGS[2]} <- 0x00800000
-	mvhi ${IREGS[2]}, 128
-	mvlo ${IREGS[2]}, 0
-	mov ${IREGS[0]}, ${ZR}
+	${getName("SETHI")} ${IREGS[2]}, 128
+	${getName("SETLO")} ${IREGS[2]}, 0
+	${getName("MOV")} ${IREGS[0]}, ${ZR}
 FTOI_LOOP:
-	fsub ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[2]}
-	fjlt ${FREGS[2]}, ${FREGS[0]}, FTOI_LOOP
-	fjeq ${FREGS[2]}, ${FREGS[0]}, FTOI_LOOP
-	fadd ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	fsti ${FREGS[0]}, ${FR}, 0
-	ldi ${IREGS[2]}, ${FR}, 0
-	sub ${IREGS[2]}, ${IREGS[2]}, ${IREGS[1]}
-	add ${IREGS[0]}, ${IREGS[2]}, ${IREGS[0]}
-	return
+	${fsub(FREGS[0], FREGS[0], FREGS[2])}
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[2]}
+	${getName("FBLT")} ${FREGS[0]}, ${FREGS[2]}, FTOI_RET
+	${getName("BRANCH")} FTOI_LOOP
+FTOI_RET:
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
+	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${getName("LDI")} ${IREGS[2]}, ${FR}, 0
+	${getName("SUB")} ${IREGS[2]}, ${IREGS[2]}, ${IREGS[1]}
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[2]}, ${IREGS[0]}
+	${_return()}
+FTOI_SMALL:
+	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
+	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${getName("LDI")} ${IREGS[0]}, ${FR}, 0
+	${getName("SUB")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${_return()}
+FTOI_NEGATIVE_MAIN:
+	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
+	${call("FTOI_POSITIVE_MAIN")}
+	${getName("SUB")} ${IREGS[0]}, ${ZR}, ${IREGS[0]}
+	${_return()}
 	
 ${comment} * truncate
 min_caml_truncate:
-	jmp min_caml_int_of_float
+	${getName("BRANCH")} min_caml_int_of_float
 	
+${comment} ビッグエンディアン
 min_caml_read_int:
-	addi ${IREGS[0]}, ${ZR}, 0
+	${getName("ADD")} ${IREGS[0]}, ${ZR}, ${ZR}
 	${comment} 24 - 31
-	input ${IREGS[1]}
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	slli ${IREGS[0]}, ${IREGS[0]}, 8
+	${getName("INPUTBYTE")} ${IREGS[1]}
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${getName("SLLI")} ${IREGS[0]}, ${IREGS[0]}, 8
 	${comment} 16 - 23
-	input ${IREGS[1]}
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	slli ${IREGS[0]}, ${IREGS[0]}, 8
+	${getName("INPUTBYTE")} ${IREGS[1]}
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${getName("SLLI")} ${IREGS[0]}, ${IREGS[0]}, 8
 	${comment} 8 - 15
-	input ${IREGS[1]}
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	slli ${IREGS[0]}, ${IREGS[0]}, 8
+	${getName("INPUTBYTE")} ${IREGS[1]}
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${getName("SLLI")} ${IREGS[0]}, ${IREGS[0]}, 8
 	${comment} 0 - 7
-	input ${IREGS[1]}
-	add ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
-	return
+	${getName("INPUTBYTE")} ${IREGS[1]}
+	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
+	${_return()}
 
 min_caml_read_float:
-	call min_caml_read_int
-	sti ${IREGS[0]}, ${FR}, 0
-	fldi ${FREGS[0]}, ${FR}, 0
-	return
+	${call("min_caml_read_int")}
+	${getName("STI")} ${IREGS[0]}, ${FR}, 0
+	${getName("FLDI")}  ${FREGS[0]}, ${FR}, 0
+	${_return()}
 
 ${comment}----------------------------------------------------------------------
 ${comment}
-${comment} 		↑　ここまで lib_asm.s
+${comment} lib_asm.s
 ${comment}
 ${comment}----------------------------------------------------------------------
 

@@ -19,10 +19,11 @@ simulator:
 	cd simulator; make $(MAKE_OPTION)
 
 # TODO
-dst/lib_asm.s: lib_asm.s.tmpl architecture.xml renderer.py
-	python renderer.py architecture.xml lib_asm.s.tmpl > dst/lib_asm.s
+dst/lib_asm.s: lib_asm.s.tmpl ${notdir $(CONFIGFILE)} renderer.py
+	python renderer.py ${notdir $(CONFIGFILE)} lib_asm.s.tmpl > dst/lib_asm.s
 
 clean:
 	cd compiler; make clean
 	cd assembler; make clean
 	cd assembler; rm $(INCDIR)/*
+	rm dst/lib_asm.s 

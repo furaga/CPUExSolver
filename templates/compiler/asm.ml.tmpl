@@ -63,16 +63,6 @@ let diff_list ls1 ls2 =
 	) [] ls1
 
 (*-----------------------------------------------------------------------------
- * 浮動小数レジスタ
- *-----------------------------------------------------------------------------*)
-(* 自由に使える浮動小数レジスタの数 *)
-let freg_num = ${int(xmlroot.find(".//floatRegs").get("num")) - int(xmlroot.find(".//constFloatRegs").get("num"))}
-let fregs = Array.init (freg_num) (fun i -> Printf.sprintf "${floatRegsPrefix}%d" i)
-let allfregs = Array.to_list fregs
-let anyfregs = Array.init ${floatRegsNum} (fun i -> Printf.sprintf "${floatRegsPrefix}%d" i)
-let reg_fgs = Array.to_list (Array.init (${floatRegsNum} - freg_num) (fun i -> Printf.sprintf "${floatRegsPrefix}%d" (freg_num + i)))
-
-(*-----------------------------------------------------------------------------
  * 整数レジスタ
  *-----------------------------------------------------------------------------*)
 let reg_0 = "${zeroReg}"	(* 常に０ *)
@@ -84,11 +74,23 @@ let reg_lk = "${linkReg}"
 let regs = 
 	Array.of_list (List.rev (diff_list 
 		(Array.to_list (Array.init ${intRegsNum} (Printf.sprintf "${intRegsPrefix}%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1; reg_lk]))
-let allregs = Array.to_list regs
-let anyregs = Array.init ${intRegsNum} (fun i -> Printf.sprintf "${intRegsPrefix}%d" i)
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
 let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
+let regs = Array.append (Array.sub regs 0 (Array.length regs - 2)) (Array.init 1 (fun x -> reg_cl))
+let allregs = Array.to_list regs
+let anyregs = Array.init ${intRegsNum} (fun i -> Printf.sprintf "${intRegsPrefix}%d" i)
+
+(*-----------------------------------------------------------------------------
+ * 浮動小数レジスタ
+ *-----------------------------------------------------------------------------*)
+(* 自由に使える浮動小数レジスタの数 *)
+let freg_num = ${int(xmlroot.find(".//floatRegs").get("num")) - int(xmlroot.find(".//constFloatRegs").get("num"))}
+let reg_fgs = Array.to_list (Array.init (${floatRegsNum} - freg_num) (fun i -> Printf.sprintf "${floatRegsPrefix}%d" (freg_num + i)))
+let anyfregs = Array.init ${floatRegsNum} (fun i -> Printf.sprintf "${floatRegsPrefix}%d" i)
+let fregs = Array.init (freg_num) (fun i -> Printf.sprintf "${floatRegsPrefix}%d" i)
 let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
+let fregs = Array.sub fregs 0 (Array.length fregs - 1)
+let allfregs = Array.to_list fregs
 
 type fundata = {arg_regs : Id.t list; ret_reg : Id.t; use_regs : S.t}
 

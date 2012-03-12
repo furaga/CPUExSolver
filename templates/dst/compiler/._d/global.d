@@ -1,2 +1,0 @@
-global.cmo: 
-global.cmx: 

@@ -1,8 +1,0 @@
-# Makefile.in
-CC = g++
-CXX = g++
-LD = g++
-RM = rm -f
-CFLAGS = -O3 -funroll-loops
-CXXFLAGS = -O3 -funroll-loops
-LDFLAGS = -O3 -lm

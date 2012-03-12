@@ -77,10 +77,9 @@ let rec g nif env = function
 
 let f e =
   (
-	  Format.eprintf "Before Inline: %d@." (size e);
 	  ref_counts := M.empty;
 	  ref_count e;
 	  let e = g S.empty M.empty e in
-	  Format.eprintf "After Inline: %d@." (size e);
+(*	  Format.eprintf "Inline: %d\n" (size e);*)
 	  e
   )

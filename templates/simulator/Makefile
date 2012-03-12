@@ -8,10 +8,10 @@ $(SIMDIR)/simulator.o: $(HEADER)
 $(SIMDIR)/simulator.cpp: simulator.cpp.tmpl $(CONFIGFILE) $(RENDERER)
 $(SIMDIR)/Makefile: Makefile.tmpl $(CONFIGFILE) $(RENDERER)
 
-$(SIMDIR)/%.cpp:
+$(SIMDIR)/%.cpp: $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(SIMDIR)/Makefile:
+$(SIMDIR)/Makefile: $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
 clean:

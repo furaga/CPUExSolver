@@ -10,9 +10,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-//-------------------------------------------------------------
 // コンストラクタ
-//-------------------------------------------------------------
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
@@ -21,15 +19,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     initEdit();
     initFile();
+    initSolver();
     initConfig();
     initHelp();
     initProjectView();
     initBuild();
 }
 
-//-------------------------------------------------------------
 // デストラクタ
-//-------------------------------------------------------------
 MainWindow::~MainWindow()
 {
     SAFE_DELETE(p_projectTreeMenu);
@@ -38,9 +35,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-//-------------------------------------------------------------
 // メニューにアクションを追加
-//-------------------------------------------------------------
 void MainWindow::addAction(QMenu* menu, const QString& title, const char* signal, const char* slot) {
     QAction* action = new QAction(title, this);
     menu->addAction(action);
@@ -61,6 +56,14 @@ void MainWindow::createNewFile(const QString& filepath) {
     QFile file(filepath);
     file.open(QIODevice::WriteOnly | QIODevice::Text);
     file.close();
+}
+
+void MainWindow::setArchPath() {
+    ui->lineArchPath->setText(
+                QFileDialog::getExistingDirectory(
+                    this,
+                    "アーキテクチャ（compilerなどがあるフォルダ）を選んでください")
+                );
 }
 
 void MainWindow::setInputFile() {

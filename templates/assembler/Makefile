@@ -13,13 +13,13 @@ $(ASMDIR)/assembler.h: assembler.h.tmpl  $(CONFIGFILE) $(RENDERER)
 $(ASMDIR)/encode.cpp: encode.cpp.tmpl $(CONFIGFILE) $(RENDERER)
 $(INCDIR)/common.h: common.h.tmpl $(CONFIGFILE) $(RENDERER)
 
-$(INCDIR)/%.h:
+$(INCDIR)/%.h: $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(ASMDIR)/%.h:
+$(ASMDIR)/%.h: $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(ASMDIR)/%.cpp:
+$(ASMDIR)/%.cpp: $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
 $(ASMDIR)/Makefile: Makefile.tmpl $(CONFIGFILE) $(RENDERER)

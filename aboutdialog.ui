@@ -45,11 +45,11 @@
    </property>
    <property name="font">
     <font>
-     <pointsize>12</pointsize>
+     <pointsize>10</pointsize>
     </font>
    </property>
    <property name="text">
-    <string>Copyright(C) 2011 Team IKA</string>
+    <string>Copyright(C) 2012 Koumei Fukahori</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButton">

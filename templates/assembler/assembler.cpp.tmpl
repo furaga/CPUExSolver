@@ -23,6 +23,7 @@
 	constTableType = binary.get("constTableType").strip()
 	tag = binary.get("tag", "0xffFFffFF").strip()
 	comment = xmlroot.find("comment").get("text").strip()
+	relativeAddressOffset = int(binary.get("relativeAddressOffset", "0"))
 
 	instsI = filter(lambda inst: inst["formBin"] == 'I' and isUse(inst["type"]), instInfo)
 	instsJ = filter(lambda inst: inst["formBin"] == 'J' and isUse(inst["type"]), instInfo)
@@ -90,7 +91,7 @@ uint32_t getAddr(string label, uint32_t base = 0)
 	
 //	cerr << "addr of " << label << " is " << addr << endl; 
 
-	return  ${"addr - base" if rom_addressing == "byte" else "(addr - base) / 4"};
+	return  ${"(addr - base) * 4" if rom_addressing == "byte" else "addr - base"};
 }
 
 ## 定数テーブルを使うとき
@@ -140,7 +141,7 @@ bool readHeapData()
 			{
 				// l.0000: ! ヒープのラベル
 				str = strtok(buffer, ":");
-				labels[str] = (binaries.size() - 1)${" * 4" if addressing == "byte" else ""};
+				labels[str] = binaries.size() - 1;
 			}
 			else
 			{
@@ -191,7 +192,7 @@ bool readInstructions()
 					cerr << "error at label line " << cur << " >" << buffer << endl;
 					error = true;
 				}
-				labels[str] = binaries.size()${" * 4" if addressing == "byte" else ""};
+				labels[str] = binaries.size();
 			}
 			else if (string(instName).find("${comment}") == 0)
 			{
@@ -264,7 +265,7 @@ void resolveLabels()
 					exit(-1);
 				} 
 				name = labelNames[i];
-				binaries[i].first = (binaries[i].first & 0xffFF0000) | (getAddr(name, ${"4 * i" if addressing == "byte" else "i"}) & 0xffFF);
+				binaries[i].first = (binaries[i].first & 0xffFF0000) | (getAddr(name, i + ${relativeAddressOffset}) & 0xffFF);
 				break;
 % endif
 % if len(absoluteInstsI) >= 1:
@@ -291,7 +292,7 @@ void resolveLabels()
 					exit(-1);
 				} 
 				name = labelNames[i];
-				binaries[i].first = (binaries[i].first & 0xfc000000) | (getAddr(name, ${"4 * i" if addressing == "byte" else "i"}) & 0x3FFffFF);
+				binaries[i].first = (binaries[i].first & 0xfc000000) | (getAddr(name, i) & 0x3FFffFF);
 				break;
 % endif
 % if len(absoluteInstsJ) >= 1:
@@ -357,8 +358,6 @@ bool assemble(const char* srcPath, const char* dstPath)
 	}
 
 % endif
-
-	cerr << "cur = " << cur << endl;
 
 	// ラベルや各コマンドを読み込む
 	result = readInstructions();

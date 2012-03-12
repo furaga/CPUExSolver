@@ -387,25 +387,5 @@ let rec print n = function
 			Printf.printf "\n";
 		end
 
-(*let f e = fst (g M.empty e)*)
-
-let f flg e = 
-	begin
-(*		if flg then
-			begin
-				print_endline "Print Syntax_t(kNormal.ml):";
-				Syntax.print 1 e;
-				print_newline ();
-				flush stdout;
-			end;*)
-		let ans = fst (g M.empty e) in
-		if flg then
-			begin
-				print_endline "Print KNormal_t(kNormal.ml):";
-				print 1 ans;
-				print_newline ();
-				flush stdout;
-			end;
-		ans
-	end
+let f flg e = fst (g M.empty e)
 

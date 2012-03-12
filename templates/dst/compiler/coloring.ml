@@ -7,9 +7,9 @@ open Block
 (******************)
 (* 関数内で登場する変数とその型 *)
 let varenv = ref M.empty 
-(* %g0 - %g32 *)
+(* ＄r0 - ＄r32 *)
 let anyregs = Array.to_list (Asm.anyregs)
-(* %f0 - %f32 *)
+(* ＄f0 - ＄f32 *)
 let anyfregs = Array.to_list (Asm.anyfregs)
 (* 割り当てにつかえない整数レジスタ *)
 let invalid_regs = Block.diff_list anyregs Asm.allregs
@@ -139,7 +139,7 @@ let get_var_type stmt =
 		| CallDir (xt, Id.L name, args, fargs) -> [xt] @ (List.map (fun x -> (x, Type.Int)) args) @ (List.map (fun x -> (x, Type.Float)) fargs)
 
 (* Mov系の命令か *)
-(* ただし、%f16とか割り当てに使われないレジスタを含むMov命令は無効とする *)
+(* ただし、＄f16とか割り当てに使われないレジスタを含むMov命令は無効とする *)
 let is_move_instruction stmt = 
 	match stmt.sInst with
 		| Mov ((x, _), y)(* when not (List.mem x invalid_regs) && not (List.mem y invalid_regs)*) -> true
@@ -179,7 +179,7 @@ let get_wishes x = if M.mem x !wish_env then Block.find_assert (Printf.sprintf "
 (* select_stackに対するプッシュとポップ *)
 let push n = select_stack := n :: !select_stack
 let pop () = 
-	if !select_stack = [] then (Printf.eprintf "POP : select_stack is empty.\n"; assert false)
+	if !select_stack = [] then failwith "POP : select_stack is empty."
 	else (
 		let ans = List.hd !select_stack in
 		select_stack := List.tl !select_stack;
@@ -209,7 +209,7 @@ let set_varenv fundef =
 	(* 浮動小数引数 + 浮動小数レジスタ *)
 	List.iter (fun x -> varenv := M.add x Type.Float !varenv) (fundef.fFargs @ anyfregs);
 	(* ダミーレジスタ *)
-	varenv := M.add "%g0" Type.Unit !varenv(*;
+	varenv := M.add "＄r0" Type.Unit !varenv(*;
 
 	(if fundef.fName = Id.L "print_int.344" && !spill_cnt = 2 then
 		assert (M.mem "Ti100.423.690" !varenv) 
@@ -248,7 +248,7 @@ let set_wish_env_in_stmt fundef stmt livein liveout =
 	match stmt.sInst with
 		(* 再帰以外の関数呼び出しのとき *)
 		| CallDir (xt, Id.L name, args, fargs) when Id.L name <> fundef.fName ->
-			let arg_regs = try Asm.get_arg_regs name with Not_found -> Printf.eprintf "Call %s\n" name; assert false in
+			let arg_regs = try Asm.get_arg_regs name with Not_found -> failwith ("Call " ^ name) in
 			let use_regs = S.union (Asm.get_use_regs name) (S.of_list arg_regs) in
 			(* 関数呼び出しをまたがっている変数にはuse_regs以外のレジスタを割り当てたい *)
 			let avoids = S.fold (fun x env -> (Avoid x) :: env) use_regs [] in
@@ -483,7 +483,7 @@ let choose_color fundef n ok_colors =
 				else if px = pm then (
 					(* ポイントが同じなら番号の若いレジスタを選ぶ *)
 					let typ = Block.find_assert "CHOOSE_COLOR(x) : " x !varenv in
-					let prefix_len = String.length (if typ = Type.Float then "%f" else "%g") in
+					let prefix_len = String.length (if typ = Type.Float then "＄f" else "＄r") in
 					let nx = int_of_string (String.sub x prefix_len (String.length x - prefix_len)) in
 					let nm = int_of_string (String.sub m prefix_len (String.length m - prefix_len)) in
 					if nx < nm then (x, px)
@@ -534,7 +534,7 @@ let insert_save_arg fundef x =
 	let new_stmt = {
 		sId = id;
 		sParent = blk.bId;
-		sInst = Save (("%g0", Type.Unit), x, x);
+		sInst = Save (("＄r0", Type.Unit), x, x);
 		sPred = "";
 		sSucc = stmt.sId;
 		sLivein = S.empty;
@@ -566,7 +566,7 @@ let insert_save2 fundef blk stmt x new_temp =
 	let new_stmt = {
 		sId = id;
 		sParent = target_blk.bId;
-		sInst = Save (("%g0", Type.Unit), new_temp, x);
+		sInst = Save (("＄r0", Type.Unit), new_temp, x);
 		sPred = "";
 		sSucc = if target_stmt = None then "" else (get_some target_stmt).sId;
 		sLivein = S.empty;
@@ -577,8 +577,8 @@ let insert_save2 fundef blk stmt x new_temp =
 	target_blk.bHead <- id;
 	target_blk.bStmts <- M.add id new_stmt target_blk.bStmts;
 	stmt.sInst <- Block.replace stmt x new_temp;
-	
-	Printf.eprintf "INSERT %s from (%s, %s) to (%s, %s)\n" id blk.bId stmt.sId target_blk.bId (if target_stmt = None then "" else (get_some target_stmt).sId)
+	if Block.debug then
+		Printf.eprintf "INSERT %s from (%s, %s) to (%s, %s)\n" id blk.bId stmt.sId target_blk.bId (if target_stmt = None then "" else (get_some target_stmt).sId)
 
 		
 (* 文の直後にSaveを挿入 *)
@@ -602,7 +602,7 @@ let insert_save fundef (blk_id, stmt_id) x new_temp =
 		let new_stmt = {
 			sId = id;
 			sParent = blk.bId;
-			sInst = Save (("%g0", Type.Unit), new_temp, x);
+			sInst = Save (("＄r0", Type.Unit), new_temp, x);
 			sPred = stmt.sId;
 			sSucc = stmt.sSucc;
 			sLivein = S.empty;
@@ -681,7 +681,7 @@ let initialize is_first fundef =
 		(* スピルされた回数 *)
 		spill_cnt := 0
 	);
-	Printf.eprintf "\n<%s> スピル %d 回目\n" (Id.get_name fundef.fName) !spill_cnt
+	if Block.debug then Printf.eprintf "\n<%s> スピル %d 回目\n" (Id.get_name fundef.fName) !spill_cnt
 
 (** 干渉グラフの作成 **)
 let build fundef =
@@ -798,18 +798,7 @@ let select_spill fundef =
 (** selct_stackに入っているノードを順に彩色していく **)
 let assign_colors fundef =
 	(** デバッグ出力1 **)
-(*	M.print
-		(Printf.sprintf "<%s> wish_env (%d): " (Id.get_name fundef.fName) (M.length !wish_env)) 
-		!wish_env 
-		(List.fold_left (
-			fun env -> 
-				function 
-					| Target x -> (env ^ ", Target " ^ x) 
-					| Avoid x -> (env ^ ", Avoid " ^ x)
-		) "");
-*)
-	
-	(*(if Block.debug then Block.eprint_list "SELECT_STACK :" !select_stack);*)
+	(if Block.debug then Block.eprint_list "SELECT_STACK :" !select_stack);
 	assert (S.is_empty (S.inter !precolored (S.of_list !select_stack)));		(* レジスタはスタックには絶対積まれていないはず *)
 	assert (S.is_empty (S.inter !precolored !coalesced_nodes)); 	(* レジスタはスタックには絶対積まれていないはず *)
 	while !select_stack <> [] do
@@ -829,25 +818,7 @@ let assign_colors fundef =
 		)
 	done;
 
-	(** デバッグ出力2 **)
-	(if fundef.fName = Id.L "f.342" && !spill_cnt >= 3 then (
-		Printf.eprintf "<%s> COALESCED_NODES :\n" (Id.get_name fundef.fName);
-		S.iter (
-			fun n -> Printf.eprintf "%s => %s(%s)\n" n (get_alias n) (get_color (get_alias n))
-		) !coalesced_nodes;
-		Printf.eprintf "\n"
-	));
-
-	S.iter (fun n -> color := M.add n (get_color (get_alias n)) !color) !coalesced_nodes(*;
-	(** デバッグ出力2 **)
-	(if M.mem "Td270.6147" !varenv then (
-		Block.print_fundef 3 fundef;
-		M.print
-			("<" ^ (Id.get_name fundef.fName) ^ "> COLOR : " ^ (if not (S.is_empty !spilled_nodes) then "SPILL!" else "non spill")) 
-			(M.fold (fun x y env -> if x <> y then M.add x y env else env) !color M.empty) 
-			(fun x -> x);
-		S.print "COALESCED_NODES : " !coalesced_nodes
-	))*)
+	S.iter (fun n -> color := M.add n (get_color (get_alias n)) !color) !coalesced_nodes
 
 (** スピルされた変数の各定義・使用位置にそれぞれSave, Restore命令を挿入 **)
 let rewrite_program fundef =
@@ -887,13 +858,13 @@ let rewrite_program fundef =
 let rec main is_first fundef = 
 	let name = Id.get_name fundef.fName in
 	(* 初期化 *)
-	Time.start (); initialize is_first fundef; Time.stop ("<" ^ name ^ "> INITIALIZE : "); flush stderr;
+	Time.start (); initialize is_first fundef; Time.stop ("<" ^ name ^ "> INITIALIZE : ") Block.debug; flush stderr;
 	(* 生存解析 *)
-	Time.start (); Liveness.analysis fundef; Time.stop ("<" ^ name ^ "> LIVENESS.ANALYSIS : "); flush stderr;
+	Time.start (); Liveness.analysis fundef; Time.stop ("<" ^ name ^ "> LIVENESS.ANALYSIS : ") Block.debug; flush stderr;
 	(* 干渉グラフの作成 *)
-	Time.start (); build fundef; Time.stop  ("<" ^ name ^ "> BUILD : "); flush stderr;
+	Time.start (); build fundef; Time.stop  ("<" ^ name ^ "> BUILD : ") Block.debug; flush stderr;
 	(* 各ワークリストの作成 *)
-	Time.start (); make_worklist fundef; Time.stop ("<" ^ name ^ "> MAKE_WORKLIST : "); flush stderr;
+	Time.start (); make_worklist fundef; Time.stop ("<" ^ name ^ "> MAKE_WORKLIST : ") Block.debug; flush stderr;
 	(* 各ワークリストの変数が全てselect_stackかcoalesced_nodesに入るまで繰り返す *)
 	Time.start (); 
 	while
@@ -916,12 +887,12 @@ let rec main is_first fundef =
 		else if not (S.is_empty !freeze_worklist) then freeze fundef
 		else if not (S.is_empty !spill_worklist) then select_spill fundef
 	done;
-	Time.stop ("<" ^ name ^ "> MAIN_LOOP : "); flush stderr;
+	Time.stop ("<" ^ name ^ "> MAIN_LOOP : ") Block.debug; flush stderr;
 	(* select_stack・coalesced_nodesの内容を元に彩色する *)
-	Time.start (); assign_colors fundef; Time.stop ("<" ^ name ^ "> ASSIGN_COLORS : "); flush stderr;
+	Time.start (); assign_colors fundef; Time.stop ("<" ^ name ^ "> ASSIGN_COLORS : ") Block.debug; flush stderr;
 	(* スピルされてたら書き換えてもう一回 *) 
 	if not (S.is_empty !spilled_nodes) then (
-		Time.start (); rewrite_program fundef; Time.stop ("<" ^ name ^ "> REWRITE_PROGRAM : "); flush stderr;
+		Time.start (); rewrite_program fundef; Time.stop ("<" ^ name ^ "> REWRITE_PROGRAM : ") Block.debug; flush stderr;
 		main false fundef
 	)
 	else (
@@ -938,12 +909,5 @@ let rec main is_first fundef =
 			(M.fold (fun x y env -> if x <> y then M.add x y env else env) !color M.empty) 
 			(fun x -> x)*)
 	);
-	Printf.eprintf "\n"
-	
-let f (Prog (fundefs, main_fun) as prog) =
-(*	Block.print_prog 3 prog;*)
-	Printf.eprintf "\nStart Coloring\n";
-	List.map (main true) (fundefs @ [main_fun]); 
-	Printf.eprintf "End Coloring\n\n";
-	prog
+	if Block.debug then Printf.eprintf "\n"
 

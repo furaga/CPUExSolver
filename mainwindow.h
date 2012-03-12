@@ -5,9 +5,12 @@
 #include "linker.h"
 #include "aboutdialog.h"
 #include "configdialog.h"
+#include "solverdialog.h"
 #include "finddialog.h"
 #include <QMainWindow>
 #include <QProcess>
+
+#define LIBRARY "./lib"
 
 namespace Ui {
 class MainWindow;
@@ -28,12 +31,15 @@ public:
 private:
     Ui::MainWindow *ui;
     QTreeWidgetItem* createSrcFolder(QStringList files);
+    QTreeWidgetItem* createAsmFolder(QString srcPath);
     aboutdialog* aboutdlg;
     ConfigDialog* configdlg;
+    SolverDialog* solverdlg;
     FindDialog* findDialog;
     QMenu* p_projectTreeMenu;
     QMenu* f_projectTreeMenu;
     QMenu* s_projectTreeMenu;
+    QMenu* lib_s_projectTreeMenu;
     QTreeWidgetItem* startupProject;
     QProcess* process;
 
@@ -41,6 +47,7 @@ private:
     void initEdit();
     void initFile();
     void initConfig();
+    void initSolver();
     void initHelp();
     void initProjectView();
     void initBuild();
@@ -105,7 +112,7 @@ private slots:
     void textEditNextTab();
     void textEditBackTab();
 
-    // ビルドメニュー系(build.cpp)
+    // 実行メニュー系(run.cpp)
     void updateOutput();
     void updateError();
     void processError(QProcess::ProcessError err);
@@ -113,14 +120,17 @@ private slots:
     bool buildStartupProject();
     bool buildSelectedProject();
     void buildAll();
-
-    // 実行メニュー系(run.cpp)
     void runStartupProject();
     void runSelectedProject();
     void runAll();
+    void cancel();
 
     // 設定メニュー系
+    // TODO
     void showConfig();
+
+    // ソルバーメニュー系
+    void showSolver();
 
     // ヘルプメニュー系(help.cpp)
     void showAbout();
@@ -135,9 +145,12 @@ private slots:
     void addExistFileBelow();
 
     //
+    void setArchPath();
     void setInputFile();
     void setOutputFile();
     void toggleOutputEnable();
+
+    void changeTabTitle();
 };
 
 #endif // MAINWINDOW_H

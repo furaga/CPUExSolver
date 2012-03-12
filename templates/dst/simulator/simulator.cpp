@@ -1,5 +1,6 @@
 #include "../include/common.h"
 #include <cmath>
+#include <cassert>
 #include <fcntl.h>
 
 // 命令の各要素にアクセスする関数を定義
@@ -59,15 +60,15 @@ uint32_t lreg;
 //------------------------------------------------------------------
 
 // アドレスをバイト/ワードアドレッシングに応じて変換
-#define addr(x) (x / 4)
+#define addr(x) (x/* / 4*/)
 #define rom_addr(x) (x/* / 4*/)
-#define ADDRESSING_UNIT	4
+#define ADDRESSING_UNIT	1
 #define ROM_ADDRESSING_UNIT	1
 
 //------------------------------------------------------------------
 
 // 停止命令か
-#define isHalt(opcode, funct) (opcode == SPECIAL && funct == HALT_F)
+#define isHalt(opcode, funct) (opcode == System && funct == HALT_F)
 
 // 発行命令数
 long long unsigned cnt;
@@ -193,26 +194,6 @@ float asF(uint32_t r)
 
 //-----------------------------------------------------------------------------
 //
-// 定数テーブルをヒープに書き込む
-//
-//-----------------------------------------------------------------------------
-void initializeHeap()
-{
-	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
-	int heapSize = ROM[0];
-	pc += ROM_ADDRESSING_UNIT;
-	cerr << "heapSize = " << heapSize << endl;
-	while (heapSize > 0)
-	{
-		RAM[addr(HR)] = ROM[rom_addr(pc)];
-		heapSize -= ADDRESSING_UNIT;
-		HR += ADDRESSING_UNIT;
-		pc += ROM_ADDRESSING_UNIT;
-	}
-}
-
-//-----------------------------------------------------------------------------
-//
 // シミュレート
 //
 //-----------------------------------------------------------------------------
@@ -221,13 +202,15 @@ int simulate(char* srcPath)
 	uint32_t inst;
 
 	uint8_t opcode, funct;
+	
+	conv tmp1;
 
 	// 初期化
-	FR = sizeof(RAM) - 4;
+	FR = sizeof(RAM) / 4 - 1;
 	// cerr << "FR = " << FR << endl;
 
 	// バイナリを読み込む
-/*	FILE* srcFile = fopen(srcPath, "rb");
+	FILE* srcFile = fopen(srcPath, "rb");
 	if (srcFile == NULL)
 	{
 		cerr << "couldn't open " << srcPath << endl;
@@ -235,20 +218,8 @@ int simulate(char* srcPath)
 	}
 	fread(ROM, 4 * ROM_NUM, 1, srcFile);
 	fclose(srcFile);
-*/
-	int fd = open(srcPath, O_RDONLY);
-	if (fd < 0)
-	{
-		cerr << "couldn't open " << srcPath << endl;
-		return 1;
-	}
-	read(fd, ROM, ROM_NUM * 4);
-	close(fd);
 	
 	cerr << srcPath << endl;
-
-	// ヒープの初期化
-	initializeHeap();
 
 	// メインループ
 	do
@@ -260,15 +231,16 @@ int simulate(char* srcPath)
 		// フレーム/ヒープレジスタは絶対に負になることはない
 		if (FR < 0)
 		{
-			cerr << "error> Frame Register(reg[" << 1 << "]) has become less than 0." << endl;
+			cerr << "error> Frame Register(reg[1]) has become less than 0." << endl;
 			break;
 		}
 		if(HR < 0) 
 		{
-			cerr << "error> Heap Register(reg[" << 2 << "]) has become less than 0." << endl;
+			cerr << "error> Heap Register(reg[2]) has become less than 0." << endl;
 			break;
 		}
 
+		assert(rom_addr(pc) >= 0);
 		inst = ROM[rom_addr(pc)];
 
 		opcode = get_opcode(inst);
@@ -291,7 +263,7 @@ int simulate(char* srcPath)
 		// 読み込んだopcode・functに対応する命令を実行する
 		switch(opcode)
 		{
-			case SPECIAL:
+			case ALU:
 				switch (funct)
 				{
 					case ADD_F:
@@ -300,34 +272,11 @@ int simulate(char* srcPath)
 					case SUB_F:
 						IRD = IRS - IRT;
 						break;
-					case MUL_F:
-						IRD = IRS * IRT;
-						break;
-					case SLL_F:
-						IRD = IRS << IRT;
-						break;
-					case B_F:
-						pc = IRS;
-						break;
-					case CALLR_F:
-						RAM[FR / 4] = LR;
-						FR -= 4;
-						LR = pc;
-						pc = IRS;
-						break;
-					case FST_F:
-						RAM[(IRS + IRT) / 4] = FRD;
-						break;
-					case FLD_F:
-						FRD = RAM[(IRS + IRT) / 4];
-						break;
-					case HALT_F:
-						break;
 					default:
 						break;
 				}			
 				break;
-			case FPI:
+			case FPU:
 				switch (funct)
 				{
 					case FADD_F:
@@ -343,47 +292,44 @@ int simulate(char* srcPath)
 						FRD = myfdiv(FRS, FRT);
 						break;
 					case FSQRT_F:
-						FRD = myfsqrt(FRS);
-						break;
-					case FABS_F:
-						FRD = myfabs(FRS);
-						break;
-					case FMOV_F:
-						FRD = FRS;
+						FRT = myfsqrt(FRS);
 						break;
 					case FNEG_F:
-						FRD = myfneg(FRS);
+						FRT = myfneg(FRS);
 						break;
 					default:
 						break;
 				}			
 				break;
-			case IO:
+			case Move:
+				switch (funct)
+				{
+					case FMOV_F:
+						FRT = FRS;
+						break;
+					default:
+						break;
+				}			
+				break;
+			case System:
 				switch (funct)
 				{
 					case INPUT_F:
-						IRD = getchar() & 0xff;
+						IRS = getchar() & 0xff;
 						break;
 					case OUTPUT_F:
 						cout << (char)IRS << flush;
 						break;
+					case HALT_F:
+						break;
 					default:
 						break;
 				}			
 				break;
-			case ADDI:
-				IRT = IRS + IMM;
-				break;
-			case SUBI:
-				IRT = IRS - IMM;
-				break;
-			case MULI:
-				IRT = IRS * IMM;
-				break;
 			case SLLI:
 				IRT = IRS << IMM;
 				break;
-			case SRLI:
+			case SRAI:
 				IRT = IRS >> IMM;
 				break;
 			case MVLO:
@@ -392,52 +338,73 @@ int simulate(char* srcPath)
 			case MVHI:
 				IRS = ((uint32_t)IMM << 16) | (IRS & 0xffff);
 				break;
-			case JMP:
+			case FMVLO:
+				FRS = (FRS & 0xffff0000) | (IMM & 0xffff);
+				break;
+			case FMVHI:
+				FRS = ((uint32_t)IMM << 16) | (FRS & 0xffff);
+				break;
+			case J:
 				pc = get_address(inst);
 				break;
-			case JEQ:
-				if (IRS == IRT) pc += IMM - 1;
+			case BEQ:
+				if (IRS == IRT) pc += IMM + (-1);
 				break;
-			case JNE:
-				if (IRS != IRT) pc += IMM - 1;
+			case BLT:
+				if (IRS <  IRT) pc += IMM + (-1);
 				break;
-			case JLT:
-				if (IRS <  IRT) pc += IMM - 1;
+			case FBNE:
+				if (asF(FRS) != asF(FRT)) pc += IMM + (-1);
 				break;
-			case FJEQ:
-				if (asF(FRS) == asF(FRT)) pc += IMM - 1;
+			case FBLT:
+				if (asF(FRS) < asF(FRT)) pc += IMM + (-1);
 				break;
-			case FJLT:
-				if (asF(FRS) < asF(FRT)) pc += IMM - 1;
+			case JR:
+				pc = IRS;
 				break;
-			case CALL:
-				RAM[FR / 4] = LR;
-				FR -= 4;
+			case JAL:
 				LR = pc;
 				pc = get_address(inst);
 				break;
+			case JALR:
+				LR = pc;
+				pc = IRS;
+				break;
+			case CALL:
+				assert(FR >= 0);
+				RAM[FR] = LR;
+				FR -= 1;
+				LR = pc;
+				pc = get_address(inst);
+				break;
+			case CALLR:
+				assert(FR >= 0);
+				RAM[FR] = LR;
+				FR -= 1;
+				LR = pc;
+				pc = IRS;
+				break;
 			case RETURN:
+				assert(FR >= 0);
 				pc = LR;
-				FR += 4;
-				LR = RAM[FR / 4];
-				break;
-			case ST:
-				RAM[(IRS + IRT) / 4] = IRD;
-				break;
-			case LD:
-				IRD = RAM[(IRS + IRT) / 4];
+				FR += 1;
+				LR = RAM[FR];
 				break;
 			case STI:
-				RAM[(IRS - IMM) / 4] = IRT;
+				assert(IRS + IMM >= 0);
+				RAM[(IRS + IMM)] = IRT;
 				break;
 			case LDI:
-				IRT = RAM[(IRS - IMM) / 4];
+				assert(IRS + IMM >= 0);
+				IRT = RAM[(IRS + IMM)];
 				break;
 			case FSTI:
-				RAM[(IRS - IMM) / 4] = FRT;
+				assert(IRS + IMM >= 0);
+				RAM[(IRS + IMM)] = FRT;
 				break;
 			case FLDI:
-				FRT = RAM[(IRS - IMM) / 4];
+				assert(IRS + IMM >= 0);
+				FRT = RAM[(IRS + IMM)];
 				break;
 			default:
 				cerr << "invalid opcode. (opcode = " << (int)opcode << ", funct = " << (int)funct <<  ", pc = " << pc << ")" << endl;

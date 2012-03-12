@@ -49,29 +49,29 @@ let diff_list ls1 ls2 =
 (*-----------------------------------------------------------------------------
  * 整数レジスタ
  *-----------------------------------------------------------------------------*)
-let reg_0 = "%g0"	(* 常に０ *)
-let reg_p1 = "%g28"	(* 常に１ *)
-let reg_m1 = "%g29"	(* 常に-１ *)
-let reg_sp = "%g1" (* frame pointer *)
-let reg_hp = "%g2" (* heap pointer *)
-let reg_lk = "%g"
+let reg_0 = "＄r0"	(* 常に０ *)
+let reg_p1 = "＄r29"	(* 常に１ *)
+let reg_m1 = "＄r30"	(* 常に-１ *)
+let reg_sp = "＄r1" (* frame pointer *)
+let reg_hp = "＄r2" (* heap pointer *)
+let reg_lk = "＄r"
 let regs = 
 	Array.of_list (List.rev (diff_list 
-		(Array.to_list (Array.init 32 (Printf.sprintf "%%g%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1; reg_lk]))
+		(Array.to_list (Array.init 32 (Printf.sprintf "＄r%d"))) [reg_0; reg_sp; reg_hp; reg_p1; reg_m1; reg_lk]))
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
 let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
 let regs = Array.append (Array.sub regs 0 (Array.length regs - 2)) (Array.init 1 (fun x -> reg_cl))
 let allregs = Array.to_list regs
-let anyregs = Array.init 32 (fun i -> Printf.sprintf "%%g%d" i)
+let anyregs = Array.init 32 (fun i -> Printf.sprintf "＄r%d" i)
 
 (*-----------------------------------------------------------------------------
  * 浮動小数レジスタ
  *-----------------------------------------------------------------------------*)
 (* 自由に使える浮動小数レジスタの数 *)
 let freg_num = 16
-let reg_fgs = Array.to_list (Array.init (32 - freg_num) (fun i -> Printf.sprintf "%%f%d" (freg_num + i)))
-let anyfregs = Array.init 32 (fun i -> Printf.sprintf "%%f%d" i)
-let fregs = Array.init (freg_num) (fun i -> Printf.sprintf "%%f%d" i)
+let reg_fgs = Array.to_list (Array.init (32 - freg_num) (fun i -> Printf.sprintf "＄f%d" (freg_num + i)))
+let anyfregs = Array.init 32 (fun i -> Printf.sprintf "＄f%d" i)
+let fregs = Array.init (freg_num) (fun i -> Printf.sprintf "＄f%d" i)
 let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
 let fregs = Array.sub fregs 0 (Array.length fregs - 1)
 let allfregs = Array.to_list fregs
@@ -90,7 +90,7 @@ let fundata = ref (M.add_list [
 		("min_caml_print_newline", { arg_regs = []; ret_reg = reg_0; use_regs = S.of_list [regs.(0)]});
 		("min_caml_write", { arg_regs = [regs.(0)]; ret_reg = regs.(0); use_regs = S.of_list [regs.(0)]});
 		("min_caml_sqrt", { arg_regs = [fregs.(0)]; ret_reg = fregs.(0); use_regs = S.of_list [fregs.(0)]});
-		("min_caml_newline", { arg_regs = []; ret_reg = "%g0"; use_regs = S.of_list [regs.(0)]});
+		("min_caml_newline", { arg_regs = []; ret_reg = "＄r0"; use_regs = S.of_list [regs.(0)]});
 		("min_caml_read_char", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0)]});
 		("min_caml_read_int", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0); regs.(1)]});
 		("min_caml_read_float", { arg_regs = []; ret_reg = regs.(0); use_regs = S.of_list [regs.(0); regs.(1); fregs.(0)]});
@@ -100,10 +100,10 @@ let fundata = ref (M.add_list [
 let fletd(x, e1, e2) = Let((x, Type.Float), e1, e2)
 let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
-let get_arg_regs x = try (M.find x !fundata).arg_regs with Not_found -> Printf.eprintf "Not_found %s\n" x; assert false
-let get_ret_reg x = try (M.find x !fundata).ret_reg with Not_found -> Printf.eprintf "Not_found %s\n" x; assert false
-let get_use_regs x = try (M.find x !fundata).use_regs with Not_found -> Printf.printf "\tNotFound %s\n" x; S.of_list (allregs @ allfregs)
-let is_reg x = (String.sub x 0 (String.length "%g") = "%g") || (String.sub x 0 (String.length "%f") = "%f")
+let get_arg_regs x = try (M.find x !fundata).arg_regs with Not_found -> failwith (Printf.sprintf "Not_found %s\n" x)
+let get_ret_reg x = try (M.find x !fundata).ret_reg with Not_found -> failwith (Printf.sprintf "Not_found %s\n" x)
+let get_use_regs x = try (M.find x !fundata).use_regs with Not_found -> S.of_list (allregs @ allfregs)
+let is_reg x = (String.sub x 0 (String.length "＄r") = "＄r") || (String.sub x 0 (String.length "＄f") = "＄f")
 
 let rec remove_and_uniq xs = function
   | [] -> []
@@ -145,7 +145,7 @@ let rec concat e1 xt e2 =
   match e1 with
   | Ans(exp) -> Let(xt, exp, e2)
   | Let(yt, exp, e1') -> Let(yt, exp, concat e1' xt e2)
-let align i = (if i mod 4(*8*) = 0 then i else i + 4)
+let align i = i
 
 let indent = Global.indent
 

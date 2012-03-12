@@ -7,7 +7,6 @@ let offsets = ref M.empty
 let offset = ref 0
 
 let add_offset x n =
-	let n = n * 4 in
 	if not (M.mem x !offsets) then (
 		offset := n + !offset;
 		offsets := M.add x !offset !offsets
@@ -37,7 +36,6 @@ let rec g envi = function
   	  (if int_of_char 'a' <= ch && ch <= int_of_char 'z' && check_type t then (
   	  	match get_ans e with
   	  		| Tuple xs -> 
-  	  			Printf.printf "Tuple %s\n" x;
   	  			env := M.add x t !env;
   	  			direct_env := M.add x t !direct_env;
 				add_offset x (List.length xs)
@@ -60,11 +58,5 @@ let rec g envi = function
 
 let f e =
 	g M.empty e;
-	(*print_string "globalEnv.env(globalEnv.ml) = \n\t";
-	M.iter (fun x y -> Printf.printf "%s " x) !env;
-	print_newline ();
-	
-	M.print "GlobalEnv.offsets : " !offsets string_of_int;
-	*)
 	e
 

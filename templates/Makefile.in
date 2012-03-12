@@ -8,8 +8,12 @@ CXXFLAGS = -O3 -funroll-loops
 LDFLAGS = -O3 -lm
 
 RENDERER=../renderer.py
-CONFIGFILE=../architecture_IKA.xml
+#CONFIGFILE=../architecture_IKA.xml
+#CONFIGFILE=../architecture_maximum.xml
 #CONFIGFILE=../architecture_rum_raisins.xml
+#CONFIGFILE=../architecture_rum_raisins2.xml
+#CONFIGFILE=../architecture_minimum.xml
+CONFIGFILE=../test.xml
 
 DSTDIR = ../dst
 INCDIR = $(DSTDIR)/include

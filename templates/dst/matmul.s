@@ -1,1007 +1,1048 @@
-.init_heap_size	0
-	jmp	min_caml_start
-!----------------------------------------------------------------------
-!
-! lib_asm.s
-!
-!----------------------------------------------------------------------
+	j	min_caml_start
 
-! * create_array
+#----------------------------------------------------------------------
+#
+# lib_asm.s
+#
+#----------------------------------------------------------------------
+
+# * create_array
 min_caml_create_array:
-	slli %g3, %g3, 2
-	add %g5, %g3, %g2
-	mov %g3, %g2
+	add $r5, $r3, $r29
+	mov $r3, $r29
 CREATE_ARRAY_LOOP:
-	jlt  %g2, %g5, CREATE_ARRAY_CONTINUE
-	b %g31
+	blt  $r29, $r5, CREATE_ARRAY_CONTINUE
+	jr $r31
 CREATE_ARRAY_CONTINUE:
-	sti %g4, %g2, 0	
-	addi %g2, %g2, 4	
-	jmp CREATE_ARRAY_LOOP
+	store $r4, $r29, 0	
+	addi $r29, $r29, 1	
+	j CREATE_ARRAY_LOOP
 
-! * create_float_array
+# * create_float_array
 min_caml_create_float_array:
-	slli %g3, %g3, 2
-	add %g4, %g3, %g2
-	mov %g3, %g2
+	add $r4, $r3, $r29
+	mov $r3, $r29
 CREATE_FLOAT_ARRAY_LOOP:
-	jlt %g2, %g4, CREATE_FLOAT_ARRAY_CONTINUE
-	b %g31
+	blt $r29, $r4, CREATE_FLOAT_ARRAY_CONTINUE
+	jr $r31
 CREATE_FLOAT_ARRAY_CONTINUE:
-	fsti %f0, %g2, 0
-	addi %g2, %g2, 4
-	jmp CREATE_FLOAT_ARRAY_LOOP
+	fmovi $r27, $f0
+	store $r27, $r29, 0
+	addi $r29, $r29, 1
+	j CREATE_FLOAT_ARRAY_LOOP
 
-! * floor		%f0 + MAGICF - MAGICF
+# * floor		$f0 + MAGICF - MAGICF
 min_caml_floor:
-	fmov %f1, %f0
-	! %f4 <- 0.0
-	! fset %f4, 0.0
-	! test test 
-	fmvhi %f4, 0
-	fmvlo %f4, 0
-	fjlt %f0, %f4, FLOOR_NEGATIVE	! if (%f4 <= %f0) goto FLOOR_PISITIVE
+	fmov $f1, $f0
+	# $f4 <- 0.0
+	# fset $f4, 0.0
+	flui $f4, 0
+	flli $f4, 0
+	fblt $f0, $f4, FLOOR_NEGATIVE	# if ($f4 <= $f0) goto FLOOR_PISITIVE
 FLOOR_POSITIVE:
-	! %f2 <- 8388608.0(0x4b000000)
-	fmvhi %f2, 19200
-	fmvlo %f2, 0
-	fjlt %f2, %f0, FLOOR_POSITIVE_RET
+	# $f2 <- 8388608.0(0x4b000000)
+	flui $f2, 19200
+	flli $f2, 0
+	fblt $f2, $f0, FLOOR_POSITIVE_RET
 FLOOR_POSITIVE_MAIN:
-	fmov %f1, %f0
-	fadd %f0, %f0, %f2
-	fsti %f0, %g1, 0
-	ldi %g4, %g1, 0
-	fsub %f0, %f0, %f2
-	fsti %f0, %g1, 0
-	ldi %g4, %g1, 0
-	fjlt %f1, %f0, FLOOR_POSITIVE_RET
-	b %g31
+	fmov $f1, $f0
+	fadd $f0, $f0, $f2
+	fmovi $r27, $f0
+	store $r27, $r30, 0
+	load $r4, $r30, 0
+	fsub $f0, $f0, $f2
+	fmovi $r27, $f0
+	store $r27, $r30, 0
+	load $r4, $r30, 0
+	fblt $f1, $f0, FLOOR_POSITIVE_RET
+	jr $r31
 FLOOR_POSITIVE_RET:
-	! %f3 <- 1.0
-	! fset %f3, 1.0
-	fmvhi %f3, 16256
-	fmvlo %f3, 0
-	fsub %f0, %f0, %f3
-	b %g31
+	# $f3 <- 1.0
+	# fset $f3, 1.0
+	flui $f3, 16256
+	flli $f3, 0
+	fsub $f0, $f0, $f3
+	jr $r31
 FLOOR_NEGATIVE:
-	fneg %f0, %f0
-	! %f2 <- 8388608.0(0x4b000000)
-	fmvhi %f2, 19200
-	fmvlo %f2, 0
-	fjlt %f2, %f0, FLOOR_NEGATIVE_RET
+	fneg $f0, $f0
+	# $f2 <- 8388608.0(0x4b000000)
+	flui $f2, 19200
+	flli $f2, 0
+	fblt $f2, $f0, FLOOR_NEGATIVE_RET
 FLOOR_NEGATIVE_MAIN:
-	fadd %f0, %f0, %f2
-	fsub %f0, %f0, %f2
-	fneg %f1, %f1
-	fjlt %f0, %f1, FLOOR_NEGATIVE_PRE_RET
-	jmp FLOOR_NEGATIVE_RET
+	fadd $f0, $f0, $f2
+	fsub $f0, $f0, $f2
+	fneg $f1, $f1
+	fblt $f0, $f1, FLOOR_NEGATIVE_PRE_RET
+	j FLOOR_NEGATIVE_RET
 FLOOR_NEGATIVE_PRE_RET:
-	fadd %f0, %f0, %f2
-	! %f3 <- 1.0
-	! fset %f3, 1.0
-	fmvhi %f3, 16256
-	fmvlo %f3, 0
-	fadd %f0, %f0, %f3
-	fsub %f0, %f0, %f2
+	fadd $f0, $f0, $f2
+	# $f3 <- 1.0
+	# fset $f3, 1.0
+	flui $f3, 16256
+	flli $f3, 0
+	fadd $f0, $f0, $f3
+	fsub $f0, $f0, $f2
 FLOOR_NEGATIVE_RET:
-	fneg %f0, %f0
-	b %g31
+	fneg $f0, $f0
+	jr $r31
 	
 min_caml_ceil:
-	fneg %f0, %f0
-
-	sti %g31, %g1, 0
-	addi %g1, %g1, -4
+	fneg $f0, $f0
+	store $r31, $r30, 0
+	addi $r30, $r30, -1
 	jal min_caml_floor
-	addi %g1, %g1, 4
-	ldi %g31, %g1, 0
+	addi $r30, $r30, 1
+	load $r31, $r30, 0
+	fneg $f0, $f0
+	jr $r31
 
-	fneg %f0, %f0
-	b %g31
-
-! * float_of_int
+# * float_of_int
 min_caml_float_of_int:
-	jlt %g3, %g0, ITOF_NEGATIVE_MAIN		! if (%g0 <= %g3) goto ITOF_MAIN
+	blt $r3, $r0, ITOF_NEGATIVE_MAIN		# if ($r0 <= $r3) goto ITOF_MAIN
 ITOF_MAIN:
-	! %f1 <- 8388608.0(0x4b000000)
-	fmvhi %f1, 19200
-	fmvlo %f1, 0
-	! %g4 <- 0x4b000000
-	mvhi %g4, 19200
-	mvlo %g4, 0
-	! %g5 <- 0x00800000
-	mvhi %g5, 128
-	mvlo %g5, 0
-	jlt %g3, %g5, ITOF_SMALL
+	# $f1 <- 8388608.0(0x4b000000)
+	flui $f1, 19200
+	flli $f1, 0
+	# $r4 <- 0x4b000000
+	lui $r4, 19200
+	lli $r4, 0
+	# $r5 <- 0x00800000
+	lui $r5, 128
+	lli $r5, 0
+	blt $r3, $r5, ITOF_SMALL
 ITOF_BIG:
-	! %f2 <- 0.0
-	! fset %f2, 0.0
-	fmvhi %f2, 0
-	fmvlo %f2, 0
+	# $f2 <- 0.0
+	# fset $f2, 0.0
+	flui $f2, 0
+	flli $f2, 0
 ITOF_LOOP:
-	sub %g3, %g3, %g5
-	fadd %f2, %f2, %f1
-	jlt %g3, %g5, ITOF_RET
-	jmp ITOF_LOOP
+	sub $r3, $r3, $r5
+	fadd $f2, $f2, $f1
+	blt $r3, $r5, ITOF_RET
+	j ITOF_LOOP
 ITOF_RET:
-	add %g3, %g3, %g4
-	sti %g3, %g1, 0
-	fldi  %f0, %g1, 0
-	fsub %f0, %f0, %f1
-	fadd %f0, %f0, %f2
-	b %g31
+	add $r3, $r3, $r4
+	store $r3, $r30, 0
+	load $r27, $r30, 0
+	imovf $f0, $r27
+	fsub $f0, $f0, $f1
+	fadd $f0, $f0, $f2
+	jr $r31
 ITOF_SMALL:
-	add %g3, %g3, %g4
-	sti %g3, %g1, 0
-	fldi  %f0, %g1, 0
-	fsub %f0, %f0, %f1
-	b %g31
+	add $r3, $r3, $r4
+	store $r3, $r30, 0
+	load $r27, $r30, 0
+	imovf $f0, $r27
+	fsub $f0, $f0, $f1
+	jr $r31
 ITOF_NEGATIVE_MAIN:
-	sub %g3, %g0, %g3
-
-	sti %g31, %g1, 0
-	addi %g1, %g1, -4
+	sub $r3, $r0, $r3
+	store $r31, $r30, 0
+	addi $r30, $r30, -1
 	jal ITOF_MAIN
-	addi %g1, %g1, 4
-	ldi %g31, %g1, 0
+	addi $r30, $r30, 1
+	load $r31, $r30, 0
+	fneg $f0, $f0
+	jr $r31
 
-	fneg %f0, %f0
-	b %g31
-
-! * int_of_float
+# * int_of_float
 min_caml_int_of_float:
-	! %f1 <- 0.0
-	! fset %f1, 0.0
-	fmvhi %f1, 0
-	fmvlo %f1, 0
-	fjlt %f0, %f1, FTOI_NEGATIVE_MAIN			! if (0.0 <= %f0) goto FTOI_MAIN
+	# $f1 <- 0.0
+	# fset $f1, 0.0
+	flui $f1, 0
+	flli $f1, 0
+	fblt $f0, $f1, FTOI_NEGATIVE_MAIN			# if (0.0 <= $f0) goto FTOI_MAIN
 FTOI_POSITIVE_MAIN:
-
-	sti %g31, %g1, 0
-	addi %g1, %g1, -4
+	store $r31, $r30, 0
+	addi $r30, $r30, -1
 	jal min_caml_floor
-	addi %g1, %g1, 4
-	ldi %g31, %g1, 0
-
-	! %f2 <- 8388608.0(0x4b000000)
-	fmvhi %f2, 19200
-	fmvlo %f2, 0
-	! %g4 <- 0x4b000000
-	mvhi %g4, 19200
-	mvlo %g4, 0
-	fjlt %f0, %f2, FTOI_SMALL		! if (MAGICF <= %f0) goto FTOI_BIG
-	! %g5 <- 0x00800000
-	mvhi %g5, 128
-	mvlo %g5, 0
-	mov %g3, %g0
+	addi $r30, $r30, 1
+	load $r31, $r30, 0
+	# $f2 <- 8388608.0(0x4b000000)
+	flui $f2, 19200
+	flli $f2, 0
+	# $r4 <- 0x4b000000
+	lui $r4, 19200
+	lli $r4, 0
+	fblt $f0, $f2, FTOI_SMALL		# if (MAGICF <= $f0) goto FTOI_BIG
+	# $r5 <- 0x00800000
+	lui $r5, 128
+	lli $r5, 0
+	mov $r3, $r0
 FTOI_LOOP:
-	fsub %f0, %f0, %f2
-	add %g3, %g3, %g5
-	fjlt %f0, %f2, FTOI_RET
-	jmp FTOI_LOOP
+	fsub $f0, $f0, $f2
+	add $r3, $r3, $r5
+	fblt $f0, $f2, FTOI_RET
+	j FTOI_LOOP
 FTOI_RET:
-	fadd %f0, %f0, %f2
-	fsti %f0, %g1, 0
-	ldi %g5, %g1, 0
-	sub %g5, %g5, %g4
-	add %g3, %g5, %g3
-	b %g31
+	fadd $f0, $f0, $f2
+	fmovi $r27, $f0
+	store $r27, $r30, 0
+	load $r5, $r30, 0
+	sub $r5, $r5, $r4
+	add $r3, $r5, $r3
+	jr $r31
 FTOI_SMALL:
-	fadd %f0, %f0, %f2
-	fsti %f0, %g1, 0
-	ldi %g3, %g1, 0
-	sub %g3, %g3, %g4
-	b %g31
+	fadd $f0, $f0, $f2
+	fmovi $r27, $f0
+	store $r27, $r30, 0
+	load $r3, $r30, 0
+	sub $r3, $r3, $r4
+	jr $r31
 FTOI_NEGATIVE_MAIN:
-	fneg %f0, %f0
-
-	sti %g31, %g1, 0
-	addi %g1, %g1, -4
+	fneg $f0, $f0
+	store $r31, $r30, 0
+	addi $r30, $r30, -1
 	jal FTOI_POSITIVE_MAIN
-	addi %g1, %g1, 4
-	ldi %g31, %g1, 0
-
-	sub %g3, %g0, %g3
-	b %g31
+	addi $r30, $r30, 1
+	load $r31, $r30, 0
+	sub $r3, $r0, $r3
+	jr $r31
 	
-! * truncate
+# * truncate
 min_caml_truncate:
-	jmp min_caml_int_of_float
+	j min_caml_int_of_float
 	
+# ビッグエンディアン
 min_caml_read_int:
-	add %g3, %g0, %g0
-	! 24 - 31
-	input %g4
-	add %g3, %g3, %g4
-	slli %g3, %g3, 8
-	! 16 - 23
-	input %g4
-	add %g3, %g3, %g4
-	slli %g3, %g3, 8
-	! 8 - 15
-	input %g4
-	add %g3, %g3, %g4
-	slli %g3, %g3, 8
-	! 0 - 7
-	input %g4
-	add %g3, %g3, %g4
-	b %g31
+	add $r3, $r0, $r0
+	# 24 - 31
+	iold $r4
+	add $r3, $r3, $r4
+	slli $r3, $r3, 8
+	# 16 - 23
+	iold $r4
+	add $r3, $r3, $r4
+	slli $r3, $r3, 8
+	# 8 - 15
+	iold $r4
+	add $r3, $r3, $r4
+	slli $r3, $r3, 8
+	# 0 - 7
+	iold $r4
+	add $r3, $r3, $r4
+	jr $r31
 
 min_caml_read_float:
-	sti %g31, %g1, 0
-	addi %g1, %g1, -4
+	store $r31, $r30, 0
+	addi $r30, $r30, -1
 	jal min_caml_read_int
-	addi %g1, %g1, 4
-	ldi %g31, %g1, 0
+	addi $r30, $r30, 1
+	load $r31, $r30, 0
+	store $r3, $r30, 0
+	load $r27, $r30, 0
+	imovf $f0, $r27
+	jr $r31
 
-	sti %g3, %g1, 0
-	fldi  %f0, %g1, 0
-	b %g31
-
-!----------------------------------------------------------------------
-!
-! lib_asm.s
-!
-!----------------------------------------------------------------------
+#----------------------------------------------------------------------
+#
+# lib_asm.s
+#
+#----------------------------------------------------------------------
 
 
 min_caml_start:
-	mvhi	%g2, 0
-	mvlo	%g2, 40
-	addi	%g29, %g0, 1
-	sub	%g30, %g0, %g29
-	! 0.000000
-	fmvhi	%f16, 0
-	fmvlo	%f16, 0
-	! 12.000000
-	fmvhi	%f17, 16704
-	fmvlo	%f17, 0
-	! 11.000000
-	fmvhi	%f18, 16688
-	fmvlo	%f18, 0
-	! 10.000000
-	fmvhi	%f19, 16672
-	fmvlo	%f19, 0
-	! 9.000000
-	fmvhi	%f20, 16656
-	fmvlo	%f20, 0
-	! 8.000000
-	fmvhi	%f21, 16640
-	fmvlo	%f21, 0
-	! 7.000000
-	fmvhi	%f22, 16608
-	fmvlo	%f22, 0
-	! 6.000000
-	fmvhi	%f23, 16576
-	fmvlo	%f23, 0
-	! 5.000000
-	fmvhi	%f24, 16544
-	fmvlo	%f24, 0
-	! 4.000000
-	fmvhi	%f25, 16512
-	fmvlo	%f25, 0
-	! 3.000000
-	fmvhi	%f26, 16448
-	fmvlo	%f26, 0
-	! 1.000000
-	fmvhi	%f27, 16256
-	fmvlo	%f27, 0
-	! 2.000000
-	fmvhi	%f28, 16384
-	fmvlo	%f28, 0
-	fmov	%f0, %f28
-	addi	%g3, %g0, 1
-	addi	%g4, %g0, 0
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -36
-	fsti	%f0, %g1, 0
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	lui	$r29, 0
+	lli	$r29, 11
+	addi	$r1, $r0, 1
+	sub	$r2, $r0, $r1
+	# 0.000000
+	flui	$f16, 0
+	flli	$f16, 0
+	# 12.000000
+	flui	$f17, 16704
+	flli	$f17, 0
+	# 11.000000
+	flui	$f18, 16688
+	flli	$f18, 0
+	# 10.000000
+	flui	$f19, 16672
+	flli	$f19, 0
+	# 9.000000
+	flui	$f20, 16656
+	flli	$f20, 0
+	# 8.000000
+	flui	$f21, 16640
+	flli	$f21, 0
+	# 7.000000
+	flui	$f22, 16608
+	flli	$f22, 0
+	# 6.000000
+	flui	$f23, 16576
+	flli	$f23, 0
+	# 5.000000
+	flui	$f24, 16544
+	flli	$f24, 0
+	# 4.000000
+	flui	$f25, 16512
+	flli	$f25, 0
+	# 3.000000
+	flui	$f26, 16448
+	flli	$f26, 0
+	# 1.000000
+	flui	$f27, 16256
+	flli	$f27, 0
+	# 2.000000
+	flui	$f28, 16384
+	flli	$f28, 0
+	fmov	$f0, $f28
+	addi	$r3, $r0, 1
+	addi	$r4, $r0, 0
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 9
+	fmovi	$r27, $f0
+	store	$r27, $r30, 0
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 1
-	addi	%g4, %g0, 0
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -32
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 1
+	addi	$r4, $r0, 0
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 8
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 1
-	addi	%g4, %g0, 0
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -28
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 1
+	addi	$r4, $r0, 0
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 7
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 1
-	addi	%g4, %g0, 0
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -24
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 1
+	addi	$r4, $r0, 0
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 6
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 1
-	addi	%g4, %g0, 1
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -20
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 1
+	addi	$r4, $r0, 1
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 5
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 1
-	addi	%g4, %g0, 0
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -16
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 1
+	addi	$r4, $r0, 0
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 4
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 0
-	fmov	%f0, %f16
-	sti	%g2, %g0, 4
-	subi	%g2, %g0, -12
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 0
+	fmov	$f0, $f16
+	store	$r29, $r0, 11
+	addi	$r29, $r0, 3
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
 	jal	min_caml_create_float_array
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	ldi	%g2, %g0, 4
-	addi	%g3, %g0, 2
-	addi	%g4, %g0, 3
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
-	jal	make.477
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	sti	%g3, %g0, -8
-	addi	%g4, %g0, 3
-	addi	%g5, %g0, 2
-	sti	%g3, %g1, 4
-	mov	%g3, %g4
-	mov	%g4, %g5
-	sti	%g31, %g1, 12
-	subi	%g1, %g1, 16
-	jal	make.477
-	addi	%g1, %g1, 16
-	ldi	%g31, %g1, 12
-	sti	%g3, %g0, -4
-	addi	%g4, %g0, 2
-	addi	%g5, %g0, 2
-	sti	%g3, %g1, 8
-	mov	%g3, %g4
-	mov	%g4, %g5
-	sti	%g31, %g1, 16
-	subi	%g1, %g1, 20
-	jal	make.477
-	addi	%g1, %g1, 20
-	ldi	%g31, %g1, 16
-	mov	%g8, %g3
-	sti	%g8, %g0, 0
-	ldi	%g6, %g1, 4
-	ldi	%g3, %g6, 0
-	fmov	%f0, %f27
-	fsti	%f0, %g3, 0
-	ldi	%g3, %g6, 0
-	fldi	%f0, %g1, 0
-	fsti	%f0, %g3, -4
-	ldi	%g3, %g6, 0
-	fmov	%f0, %f26
-	fsti	%f0, %g3, -8
-	ldi	%g3, %g6, -4
-	fmov	%f0, %f25
-	fsti	%f0, %g3, 0
-	ldi	%g3, %g6, -4
-	fmov	%f0, %f24
-	fsti	%f0, %g3, -4
-	ldi	%g3, %g6, -4
-	fmov	%f0, %f23
-	fsti	%f0, %g3, -8
-	ldi	%g7, %g1, 8
-	ldi	%g3, %g7, 0
-	fmov	%f0, %f22
-	fsti	%f0, %g3, 0
-	ldi	%g3, %g7, 0
-	fmov	%f0, %f21
-	fsti	%f0, %g3, -4
-	ldi	%g3, %g7, -4
-	fmov	%f0, %f20
-	fsti	%f0, %g3, 0
-	ldi	%g3, %g7, -4
-	fmov	%f0, %f19
-	fsti	%f0, %g3, -4
-	ldi	%g3, %g7, -8
-	fmov	%f0, %f18
-	fsti	%f0, %g3, 0
-	ldi	%g3, %g7, -8
-	fmov	%f0, %f17
-	fsti	%f0, %g3, -4
-	addi	%g3, %g0, 2
-	addi	%g4, %g0, 3
-	addi	%g5, %g0, 2
-	sti	%g8, %g1, 12
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
-	jal	mul.469
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	ldi	%g3, %g1, 12
-	ldi	%g4, %g3, 0
-	fldi	%f0, %g4, 0
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	load	$r29, $r0, 11
+	addi	$r3, $r0, 2
+	addi	$r4, $r0, 3
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
+	jal	make.513
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	store	$r3, $r0, 2
+	addi	$r4, $r0, 3
+	addi	$r5, $r0, 2
+	store	$r3, $r30, -1
+	mov	$r3, $r4
+	mov	$r4, $r5
+	store	$r31, $r30, -3
+	subi	$r30, $r30, 4
+	jal	make.513
+	addi	$r30, $r30, 4
+	load	$r31, $r30, -3
+	store	$r3, $r0, 1
+	addi	$r4, $r0, 2
+	addi	$r5, $r0, 2
+	store	$r3, $r30, -2
+	mov	$r3, $r4
+	mov	$r4, $r5
+	store	$r31, $r30, -4
+	subi	$r30, $r30, 5
+	jal	make.513
+	addi	$r30, $r30, 5
+	load	$r31, $r30, -4
+	mov	$r8, $r3
+	store	$r8, $r0, 0
+	load	$r6, $r30, -1
+	load	$r3, $r6, 0
+	fmov	$f0, $f27
+	fmovi	$r27, $f0
+	store	$r27, $r3, 0
+	load	$r3, $r6, 0
+	load	$r27, $r30, 0
+	imovf	$f0, $r27
+	fmovi	$r27, $f0
+	store	$r27, $r3, 1
+	load	$r3, $r6, 0
+	fmov	$f0, $f26
+	fmovi	$r27, $f0
+	store	$r27, $r3, 2
+	load	$r3, $r6, 1
+	fmov	$f0, $f25
+	fmovi	$r27, $f0
+	store	$r27, $r3, 0
+	load	$r3, $r6, 1
+	fmov	$f0, $f24
+	fmovi	$r27, $f0
+	store	$r27, $r3, 1
+	load	$r3, $r6, 1
+	fmov	$f0, $f23
+	fmovi	$r27, $f0
+	store	$r27, $r3, 2
+	load	$r7, $r30, -2
+	load	$r3, $r7, 0
+	fmov	$f0, $f22
+	fmovi	$r27, $f0
+	store	$r27, $r3, 0
+	load	$r3, $r7, 0
+	fmov	$f0, $f21
+	fmovi	$r27, $f0
+	store	$r27, $r3, 1
+	load	$r3, $r7, 1
+	fmov	$f0, $f20
+	fmovi	$r27, $f0
+	store	$r27, $r3, 0
+	load	$r3, $r7, 1
+	fmov	$f0, $f19
+	fmovi	$r27, $f0
+	store	$r27, $r3, 1
+	load	$r3, $r7, 2
+	fmov	$f0, $f18
+	fmovi	$r27, $f0
+	store	$r27, $r3, 0
+	load	$r3, $r7, 2
+	fmov	$f0, $f17
+	fmovi	$r27, $f0
+	store	$r27, $r3, 1
+	addi	$r3, $r0, 2
+	addi	$r4, $r0, 3
+	addi	$r5, $r0, 2
+	store	$r8, $r30, -3
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
+	jal	mul.505
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	load	$r3, $r30, -3
+	load	$r4, $r3, 0
+	load	$r27, $r4, 0
+	imovf	$f0, $r27
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
 	jal	min_caml_truncate
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
-	jal	print_int.467
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g3, %g1, 20
-	addi	%g3, %g0, 10
-	output	%g3
-	ldi	%g3, %g1, 20
-	ldi	%g3, %g1, 12
-	ldi	%g4, %g3, 0
-	fldi	%f0, %g4, -4
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
+	jal	print_int.503
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r3, $r30, -5
+	addi	$r3, $r0, 10
+	iost	$r3
+	load	$r3, $r30, -5
+	load	$r3, $r30, -3
+	load	$r4, $r3, 0
+	load	$r27, $r4, 1
+	imovf	$f0, $r27
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
 	jal	min_caml_truncate
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
-	jal	print_int.467
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g3, %g1, 20
-	addi	%g3, %g0, 10
-	output	%g3
-	ldi	%g3, %g1, 20
-	ldi	%g3, %g1, 12
-	ldi	%g4, %g3, -4
-	fldi	%f0, %g4, 0
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
+	jal	print_int.503
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r3, $r30, -5
+	addi	$r3, $r0, 10
+	iost	$r3
+	load	$r3, $r30, -5
+	load	$r3, $r30, -3
+	load	$r4, $r3, 1
+	load	$r27, $r4, 0
+	imovf	$f0, $r27
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
 	jal	min_caml_truncate
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
-	jal	print_int.467
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g3, %g1, 20
-	addi	%g3, %g0, 10
-	output	%g3
-	ldi	%g3, %g1, 20
-	ldi	%g3, %g1, 12
-	ldi	%g3, %g3, -4
-	fldi	%f0, %g3, -4
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
+	jal	print_int.503
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r3, $r30, -5
+	addi	$r3, $r0, 10
+	iost	$r3
+	load	$r3, $r30, -5
+	load	$r3, $r30, -3
+	load	$r3, $r3, 1
+	load	$r27, $r3, 1
+	imovf	$f0, $r27
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
 	jal	min_caml_truncate
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g31, %g1, 20
-	subi	%g1, %g1, 24
-	jal	print_int.467
-	addi	%g1, %g1, 24
-	ldi	%g31, %g1, 20
-	sti	%g3, %g1, 20
-	addi	%g3, %g0, 10
-	output	%g3
-	ldi	%g3, %g1, 20
-	halt
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r31, $r30, -5
+	subi	$r30, $r30, 6
+	jal	print_int.503
+	addi	$r30, $r30, 6
+	load	$r31, $r30, -5
+	store	$r3, $r30, -5
+	addi	$r3, $r0, 10
+	iost	$r3
+	load	$r3, $r30, -5
+	hlt
 
-!---------------------------------------------------------------------
-! args = [%g3, %g4, %g5, %g6]
-! fargs = []
-! ret type = Int
-!---------------------------------------------------------------------
-div_binary_search.462:
-	add	%g7, %g5, %g6
-	srli	%g7, %g7, 1
-	mul	%g8, %g7, %g4
-	sub	%g9, %g6, %g5
-	jlt	%g29, %g9, jle_else.1131
-	mov	%g3, %g5
-	b	%g31
-jle_else.1131:
-	jlt	%g8, %g3, jle_else.1132
-	jeq	%g8, %g3, jne_else.1133
-	mov	%g6, %g7
-	jmp	div_binary_search.462
-jne_else.1133:
-	mov	%g3, %g7
-	b	%g31
-jle_else.1132:
-	mov	%g5, %g7
-	jmp	div_binary_search.462
+#---------------------------------------------------------------------
+# args = [$r3, $r4, $r5, $r6]
+# fargs = []
+# ret type = Int
+#---------------------------------------------------------------------
+div_binary_search.491:
+	add	$r7, $r5, $r6
+	srli	$r7, $r7, 1
+	mul	$r8, $r7, $r4
+	sub	$r9, $r6, $r5
+	blt	$r1, $r9, ble_else.1194
+	mov	$r3, $r5
+	jr	$r31
+ble_else.1194:
+	blt	$r8, $r3, ble_else.1195
+	bne	$r8, $r3, beq_else.1196
+	mov	$r3, $r7
+	jr	$r31
+beq_else.1196:
+	mov	$r6, $r7
+	j	div_binary_search.491
+ble_else.1195:
+	mov	$r5, $r7
+	j	div_binary_search.491
 
-!---------------------------------------------------------------------
-! args = [%g3]
-! fargs = []
-! ret type = Unit
-!---------------------------------------------------------------------
-print_int.467:
-	jlt	%g3, %g0, jge_else.1134
-	mvhi	%g4, 1525
-	mvlo	%g4, 57600
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 3
-	sti	%g3, %g1, 0
-	sti	%g31, %g1, 8
-	subi	%g1, %g1, 12
-	jal	div_binary_search.462
-	addi	%g1, %g1, 12
-	ldi	%g31, %g1, 8
-	mvhi	%g4, 1525
-	mvlo	%g4, 57600
-	mul	%g4, %g3, %g4
-	ldi	%g5, %g1, 0
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 4
-	jlt	%g0, %g3, jle_else.1135
-	addi	%g3, %g0, 0
-	jmp	jle_cont.1136
-jle_else.1135:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1136:
-	mvhi	%g4, 152
-	mvlo	%g4, 38528
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 4
-	sti	%g3, %g1, 8
-	mov	%g3, %g7
-	sti	%g31, %g1, 16
-	subi	%g1, %g1, 20
-	jal	div_binary_search.462
-	addi	%g1, %g1, 20
-	ldi	%g31, %g1, 16
-	mvhi	%g4, 152
-	mvlo	%g4, 38528
-	mul	%g4, %g3, %g4
-	ldi	%g5, %g1, 4
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 12
-	jlt	%g0, %g3, jle_else.1137
-	ldi	%g5, %g1, 8
-	jeq	%g5, %g0, jne_else.1139
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1140
-jne_else.1139:
-	addi	%g3, %g0, 0
-jne_cont.1140:
-	jmp	jle_cont.1138
-jle_else.1137:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1138:
-	mvhi	%g4, 15
-	mvlo	%g4, 16960
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 12
-	sti	%g3, %g1, 16
-	mov	%g3, %g7
-	sti	%g31, %g1, 24
-	subi	%g1, %g1, 28
-	jal	div_binary_search.462
-	addi	%g1, %g1, 28
-	ldi	%g31, %g1, 24
-	mvhi	%g4, 15
-	mvlo	%g4, 16960
-	mul	%g4, %g3, %g4
-	ldi	%g5, %g1, 12
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 20
-	jlt	%g0, %g3, jle_else.1141
-	ldi	%g5, %g1, 16
-	jeq	%g5, %g0, jne_else.1143
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1144
-jne_else.1143:
-	addi	%g3, %g0, 0
-jne_cont.1144:
-	jmp	jle_cont.1142
-jle_else.1141:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1142:
-	mvhi	%g4, 1
-	mvlo	%g4, 34464
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 20
-	sti	%g3, %g1, 24
-	mov	%g3, %g7
-	sti	%g31, %g1, 32
-	subi	%g1, %g1, 36
-	jal	div_binary_search.462
-	addi	%g1, %g1, 36
-	ldi	%g31, %g1, 32
-	mvhi	%g4, 1
-	mvlo	%g4, 34464
-	mul	%g4, %g3, %g4
-	ldi	%g5, %g1, 20
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 28
-	jlt	%g0, %g3, jle_else.1145
-	ldi	%g5, %g1, 24
-	jeq	%g5, %g0, jne_else.1147
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1148
-jne_else.1147:
-	addi	%g3, %g0, 0
-jne_cont.1148:
-	jmp	jle_cont.1146
-jle_else.1145:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1146:
-	addi	%g4, %g0, 10000
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 28
-	sti	%g3, %g1, 32
-	mov	%g3, %g7
-	sti	%g31, %g1, 40
-	subi	%g1, %g1, 44
-	jal	div_binary_search.462
-	addi	%g1, %g1, 44
-	ldi	%g31, %g1, 40
-	addi	%g4, %g0, 10000
-	mul	%g4, %g3, %g4
-	ldi	%g5, %g1, 28
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 36
-	jlt	%g0, %g3, jle_else.1149
-	ldi	%g5, %g1, 32
-	jeq	%g5, %g0, jne_else.1151
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1152
-jne_else.1151:
-	addi	%g3, %g0, 0
-jne_cont.1152:
-	jmp	jle_cont.1150
-jle_else.1149:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1150:
-	addi	%g4, %g0, 1000
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 36
-	sti	%g3, %g1, 40
-	mov	%g3, %g7
-	sti	%g31, %g1, 48
-	subi	%g1, %g1, 52
-	jal	div_binary_search.462
-	addi	%g1, %g1, 52
-	ldi	%g31, %g1, 48
-	muli	%g4, %g3, 1000
-	ldi	%g5, %g1, 36
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 44
-	jlt	%g0, %g3, jle_else.1153
-	ldi	%g5, %g1, 40
-	jeq	%g5, %g0, jne_else.1155
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1156
-jne_else.1155:
-	addi	%g3, %g0, 0
-jne_cont.1156:
-	jmp	jle_cont.1154
-jle_else.1153:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1154:
-	addi	%g4, %g0, 100
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 44
-	sti	%g3, %g1, 48
-	mov	%g3, %g7
-	sti	%g31, %g1, 56
-	subi	%g1, %g1, 60
-	jal	div_binary_search.462
-	addi	%g1, %g1, 60
-	ldi	%g31, %g1, 56
-	muli	%g4, %g3, 100
-	ldi	%g5, %g1, 44
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 52
-	jlt	%g0, %g3, jle_else.1157
-	ldi	%g5, %g1, 48
-	jeq	%g5, %g0, jne_else.1159
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1160
-jne_else.1159:
-	addi	%g3, %g0, 0
-jne_cont.1160:
-	jmp	jle_cont.1158
-jle_else.1157:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1158:
-	addi	%g4, %g0, 10
-	addi	%g5, %g0, 0
-	addi	%g6, %g0, 10
-	ldi	%g7, %g1, 52
-	sti	%g3, %g1, 56
-	mov	%g3, %g7
-	sti	%g31, %g1, 64
-	subi	%g1, %g1, 68
-	jal	div_binary_search.462
-	addi	%g1, %g1, 68
-	ldi	%g31, %g1, 64
-	muli	%g4, %g3, 10
-	ldi	%g5, %g1, 52
-	sub	%g4, %g5, %g4
-	sti	%g4, %g1, 60
-	jlt	%g0, %g3, jle_else.1161
-	ldi	%g5, %g1, 56
-	jeq	%g5, %g0, jne_else.1163
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-	jmp	jne_cont.1164
-jne_else.1163:
-	addi	%g3, %g0, 0
-jne_cont.1164:
-	jmp	jle_cont.1162
-jle_else.1161:
-	addi	%g5, %g0, 48
-	add	%g3, %g5, %g3
-	output	%g3
-	addi	%g3, %g0, 1
-jle_cont.1162:
-	addi	%g3, %g0, 48
-	ldi	%g4, %g1, 60
-	add	%g3, %g3, %g4
-	output	%g3
-	b	%g31
-jge_else.1134:
-	addi	%g4, %g0, 45
-	sti	%g3, %g1, 0
-	output	%g4
-	ldi	%g3, %g1, 0
-	sub	%g3, %g0, %g3
-	jmp	print_int.467
+#---------------------------------------------------------------------
+# args = [$r3]
+# fargs = []
+# ret type = Unit
+#---------------------------------------------------------------------
+print_int.503:
+	blt	$r3, $r0, bge_else.1197
+	lui	$r4, 1525
+	lli	$r4, 57600
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 3
+	store	$r3, $r30, 0
+	store	$r31, $r30, -2
+	subi	$r30, $r30, 3
+	jal	div_binary_search.491
+	addi	$r30, $r30, 3
+	load	$r31, $r30, -2
+	lui	$r4, 1525
+	lli	$r4, 57600
+	mul	$r4, $r3, $r4
+	load	$r5, $r30, 0
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -1
+	blt	$r0, $r3, ble_else.1198
+	addi	$r3, $r0, 0
+	j	ble_cont.1199
+ble_else.1198:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1199:
+	lui	$r4, 152
+	lli	$r4, 38528
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -1
+	store	$r3, $r30, -2
+	mov	$r3, $r7
+	store	$r31, $r30, -4
+	subi	$r30, $r30, 5
+	jal	div_binary_search.491
+	addi	$r30, $r30, 5
+	load	$r31, $r30, -4
+	lui	$r4, 152
+	lli	$r4, 38528
+	mul	$r4, $r3, $r4
+	load	$r5, $r30, -1
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -3
+	blt	$r0, $r3, ble_else.1200
+	load	$r5, $r30, -2
+	bne	$r5, $r0, beq_else.1202
+	addi	$r3, $r0, 0
+	j	beq_cont.1203
+beq_else.1202:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1203:
+	j	ble_cont.1201
+ble_else.1200:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1201:
+	lui	$r4, 15
+	lli	$r4, 16960
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -3
+	store	$r3, $r30, -4
+	mov	$r3, $r7
+	store	$r31, $r30, -6
+	subi	$r30, $r30, 7
+	jal	div_binary_search.491
+	addi	$r30, $r30, 7
+	load	$r31, $r30, -6
+	lui	$r4, 15
+	lli	$r4, 16960
+	mul	$r4, $r3, $r4
+	load	$r5, $r30, -3
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -5
+	blt	$r0, $r3, ble_else.1204
+	load	$r5, $r30, -4
+	bne	$r5, $r0, beq_else.1206
+	addi	$r3, $r0, 0
+	j	beq_cont.1207
+beq_else.1206:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1207:
+	j	ble_cont.1205
+ble_else.1204:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1205:
+	lui	$r4, 1
+	lli	$r4, 34464
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -5
+	store	$r3, $r30, -6
+	mov	$r3, $r7
+	store	$r31, $r30, -8
+	subi	$r30, $r30, 9
+	jal	div_binary_search.491
+	addi	$r30, $r30, 9
+	load	$r31, $r30, -8
+	lui	$r4, 1
+	lli	$r4, 34464
+	mul	$r4, $r3, $r4
+	load	$r5, $r30, -5
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -7
+	blt	$r0, $r3, ble_else.1208
+	load	$r5, $r30, -6
+	bne	$r5, $r0, beq_else.1210
+	addi	$r3, $r0, 0
+	j	beq_cont.1211
+beq_else.1210:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1211:
+	j	ble_cont.1209
+ble_else.1208:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1209:
+	addi	$r4, $r0, 10000
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -7
+	store	$r3, $r30, -8
+	mov	$r3, $r7
+	store	$r31, $r30, -10
+	subi	$r30, $r30, 11
+	jal	div_binary_search.491
+	addi	$r30, $r30, 11
+	load	$r31, $r30, -10
+	addi	$r4, $r0, 10000
+	mul	$r4, $r3, $r4
+	load	$r5, $r30, -7
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -9
+	blt	$r0, $r3, ble_else.1212
+	load	$r5, $r30, -8
+	bne	$r5, $r0, beq_else.1214
+	addi	$r3, $r0, 0
+	j	beq_cont.1215
+beq_else.1214:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1215:
+	j	ble_cont.1213
+ble_else.1212:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1213:
+	addi	$r4, $r0, 1000
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -9
+	store	$r3, $r30, -10
+	mov	$r3, $r7
+	store	$r31, $r30, -12
+	subi	$r30, $r30, 13
+	jal	div_binary_search.491
+	addi	$r30, $r30, 13
+	load	$r31, $r30, -12
+	muli	$r4, $r3, 1000
+	load	$r5, $r30, -9
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -11
+	blt	$r0, $r3, ble_else.1216
+	load	$r5, $r30, -10
+	bne	$r5, $r0, beq_else.1218
+	addi	$r3, $r0, 0
+	j	beq_cont.1219
+beq_else.1218:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1219:
+	j	ble_cont.1217
+ble_else.1216:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1217:
+	addi	$r4, $r0, 100
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -11
+	store	$r3, $r30, -12
+	mov	$r3, $r7
+	store	$r31, $r30, -14
+	subi	$r30, $r30, 15
+	jal	div_binary_search.491
+	addi	$r30, $r30, 15
+	load	$r31, $r30, -14
+	muli	$r4, $r3, 100
+	load	$r5, $r30, -11
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -13
+	blt	$r0, $r3, ble_else.1220
+	load	$r5, $r30, -12
+	bne	$r5, $r0, beq_else.1222
+	addi	$r3, $r0, 0
+	j	beq_cont.1223
+beq_else.1222:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1223:
+	j	ble_cont.1221
+ble_else.1220:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1221:
+	addi	$r4, $r0, 10
+	addi	$r5, $r0, 0
+	addi	$r6, $r0, 10
+	load	$r7, $r30, -13
+	store	$r3, $r30, -14
+	mov	$r3, $r7
+	store	$r31, $r30, -16
+	subi	$r30, $r30, 17
+	jal	div_binary_search.491
+	addi	$r30, $r30, 17
+	load	$r31, $r30, -16
+	muli	$r4, $r3, 10
+	load	$r5, $r30, -13
+	sub	$r4, $r5, $r4
+	store	$r4, $r30, -15
+	blt	$r0, $r3, ble_else.1224
+	load	$r5, $r30, -14
+	bne	$r5, $r0, beq_else.1226
+	addi	$r3, $r0, 0
+	j	beq_cont.1227
+beq_else.1226:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+beq_cont.1227:
+	j	ble_cont.1225
+ble_else.1224:
+	addi	$r5, $r0, 48
+	add	$r3, $r5, $r3
+	iost	$r3
+	addi	$r3, $r0, 1
+ble_cont.1225:
+	addi	$r3, $r0, 48
+	load	$r4, $r30, -15
+	add	$r3, $r3, $r4
+	iost	$r3
+	jr	$r31
+bge_else.1197:
+	addi	$r4, $r0, 45
+	store	$r3, $r30, 0
+	iost	$r4
+	load	$r3, $r30, 0
+	sub	$r3, $r0, $r3
+	j	print_int.503
 
-!---------------------------------------------------------------------
-! args = [%g3]
-! fargs = []
-! ret type = Unit
-!---------------------------------------------------------------------
-loop3.608:
-	ldi	%g4, %g28, -20
-	ldi	%g5, %g28, -16
-	ldi	%g6, %g28, -12
-	ldi	%g7, %g28, -8
-	ldi	%g8, %g28, -4
-	jlt	%g3, %g0, jge_else.1165
-	slli	%g9, %g5, 2
-	ld	%g6, %g6, %g9
-	slli	%g9, %g4, 2
-	fld	%f0, %g6, %g9
-	slli	%g5, %g5, 2
-	ld	%g5, %g8, %g5
-	slli	%g8, %g3, 2
-	fld	%f1, %g5, %g8
-	slli	%g5, %g3, 2
-	ld	%g5, %g7, %g5
-	slli	%g7, %g4, 2
-	fld	%f2, %g5, %g7
-	fmul	%f1, %f1, %f2
-	fadd	%f0, %f0, %f1
-	slli	%g4, %g4, 2
-	fst	%f0, %g6, %g4
-	subi	%g3, %g3, 1
-	ldi	%g27, %g28, 0
-	b	%g27
-jge_else.1165:
-	b	%g31
+#---------------------------------------------------------------------
+# args = [$r3]
+# fargs = []
+# ret type = Unit
+#---------------------------------------------------------------------
+loop3.644:
+	load	$r4, $r28, 5
+	load	$r5, $r28, 4
+	load	$r6, $r28, 3
+	load	$r7, $r28, 2
+	load	$r8, $r28, 1
+	blt	$r3, $r0, bge_else.1228
+	slli	$r9, $r5, 0
+	add	$r27, $r6, $r9
+	load	$r6, $r27, 0
+	slli	$r9, $r4, 0
+	add	$r27, $r6, $r9
+	load	$r27, $r27, 0
+	imovf	$f0, $r27
+	slli	$r5, $r5, 0
+	add	$r27, $r8, $r5
+	load	$r5, $r27, 0
+	slli	$r8, $r3, 0
+	add	$r27, $r5, $r8
+	load	$r27, $r27, 0
+	imovf	$f1, $r27
+	slli	$r5, $r3, 0
+	add	$r27, $r7, $r5
+	load	$r5, $r27, 0
+	slli	$r7, $r4, 0
+	add	$r27, $r5, $r7
+	load	$r27, $r27, 0
+	imovf	$f2, $r27
+	fmul	$f1, $f1, $f2
+	fadd	$f0, $f0, $f1
+	slli	$r4, $r4, 0
+	add	$r27, $r6, $r4
+	store	$r3, $r30, -1
+	fmovi	$r3, $f0
+	store	$r3, $r27, 0
+	load	$r3, $r30, -1
+	subi	$r3, $r3, 1
+	load	$r27, $r28, 0
+	jr	$r27
+bge_else.1228:
+	jr	$r31
 
-!---------------------------------------------------------------------
-! args = [%g3]
-! fargs = []
-! ret type = Unit
-!---------------------------------------------------------------------
-loop2.601:
-	ldi	%g4, %g28, -20
-	ldi	%g5, %g28, -16
-	ldi	%g6, %g28, -12
-	ldi	%g7, %g28, -8
-	ldi	%g8, %g28, -4
-	jlt	%g3, %g0, jge_else.1167
-	mov	%g9, %g2
-	addi	%g2, %g2, 24
-	setL %g10, loop3.608
-	sti	%g10, %g9, 0
-	sti	%g3, %g9, -20
-	sti	%g5, %g9, -16
-	sti	%g6, %g9, -12
-	sti	%g7, %g9, -8
-	sti	%g8, %g9, -4
-	subi	%g4, %g4, 1
-	sti	%g3, %g1, 0
-	mov	%g3, %g4
-	mov	%g28, %g9
-	ldi	%g27, %g28, 0
-	subi	%g1, %g1, 8
-	callR	%g27
-	addi	%g1, %g1, 8
-	ldi	%g3, %g1, 0
-	subi	%g3, %g3, 1
-	ldi	%g27, %g28, 0
-	b	%g27
-jge_else.1167:
-	b	%g31
+#---------------------------------------------------------------------
+# args = [$r3]
+# fargs = []
+# ret type = Unit
+#---------------------------------------------------------------------
+loop2.637:
+	load	$r4, $r28, 5
+	load	$r5, $r28, 4
+	load	$r6, $r28, 3
+	load	$r7, $r28, 2
+	load	$r8, $r28, 1
+	blt	$r3, $r0, bge_else.1230
+	mov	$r9, $r29
+	addi	$r29, $r29, 6
+	setl $r10, loop3.644
+	store	$r10, $r9, 0
+	store	$r3, $r9, 5
+	store	$r5, $r9, 4
+	store	$r6, $r9, 3
+	store	$r7, $r9, 2
+	store	$r8, $r9, 1
+	subi	$r4, $r4, 1
+	store	$r28, $r30, 0
+	store	$r3, $r30, -1
+	mov	$r3, $r4
+	mov	$r28, $r9
+	store	$r31, $r30, -3
+	subi	$r30, $r30, 4
+	load	$r27, $r28, 0
+	jalr	$r27
+	addi	$r30, $r30, 4
+	load	$r31, $r30, -3
+	load	$r3, $r30, -1
+	subi	$r3, $r3, 1
+	load	$r28, $r30, 0
+	load	$r27, $r28, 0
+	jr	$r27
+bge_else.1230:
+	jr	$r31
 
-!---------------------------------------------------------------------
-! args = [%g3]
-! fargs = []
-! ret type = Unit
-!---------------------------------------------------------------------
-loop1.597:
-	ldi	%g4, %g28, -20
-	ldi	%g5, %g28, -16
-	ldi	%g6, %g28, -12
-	ldi	%g7, %g28, -8
-	ldi	%g8, %g28, -4
-	jlt	%g3, %g0, jge_else.1169
-	mov	%g9, %g2
-	addi	%g2, %g2, 24
-	setL %g10, loop2.601
-	sti	%g10, %g9, 0
-	sti	%g5, %g9, -20
-	sti	%g3, %g9, -16
-	sti	%g6, %g9, -12
-	sti	%g7, %g9, -8
-	sti	%g8, %g9, -4
-	subi	%g4, %g4, 1
-	sti	%g3, %g1, 0
-	mov	%g3, %g4
-	mov	%g28, %g9
-	ldi	%g27, %g28, 0
-	subi	%g1, %g1, 8
-	callR	%g27
-	addi	%g1, %g1, 8
-	ldi	%g3, %g1, 0
-	subi	%g3, %g3, 1
-	ldi	%g27, %g28, 0
-	b	%g27
-jge_else.1169:
-	b	%g31
+#---------------------------------------------------------------------
+# args = [$r3]
+# fargs = []
+# ret type = Unit
+#---------------------------------------------------------------------
+loop1.633:
+	load	$r4, $r28, 5
+	load	$r5, $r28, 4
+	load	$r6, $r28, 3
+	load	$r7, $r28, 2
+	load	$r8, $r28, 1
+	blt	$r3, $r0, bge_else.1232
+	mov	$r9, $r29
+	addi	$r29, $r29, 6
+	setl $r10, loop2.637
+	store	$r10, $r9, 0
+	store	$r5, $r9, 5
+	store	$r3, $r9, 4
+	store	$r6, $r9, 3
+	store	$r7, $r9, 2
+	store	$r8, $r9, 1
+	subi	$r4, $r4, 1
+	store	$r28, $r30, 0
+	store	$r3, $r30, -1
+	mov	$r3, $r4
+	mov	$r28, $r9
+	store	$r31, $r30, -3
+	subi	$r30, $r30, 4
+	load	$r27, $r28, 0
+	jalr	$r27
+	addi	$r30, $r30, 4
+	load	$r31, $r30, -3
+	load	$r3, $r30, -1
+	subi	$r3, $r3, 1
+	load	$r28, $r30, 0
+	load	$r27, $r28, 0
+	jr	$r27
+bge_else.1232:
+	jr	$r31
 
-!---------------------------------------------------------------------
-! args = [%g3, %g4, %g5, %g6, %g7, %g8]
-! fargs = []
-! ret type = Unit
-!---------------------------------------------------------------------
-mul.469:
-	mov	%g28, %g2
-	addi	%g2, %g2, 24
-	setL %g9, loop1.597
-	sti	%g9, %g28, 0
-	sti	%g5, %g28, -20
-	sti	%g4, %g28, -16
-	sti	%g8, %g28, -12
-	sti	%g7, %g28, -8
-	sti	%g6, %g28, -4
-	subi	%g3, %g3, 1
-	ldi	%g27, %g28, 0
-	b	%g27
+#---------------------------------------------------------------------
+# args = [$r3, $r4, $r5, $r6, $r7, $r8]
+# fargs = []
+# ret type = Unit
+#---------------------------------------------------------------------
+mul.505:
+	mov	$r28, $r29
+	addi	$r29, $r29, 6
+	setl $r9, loop1.633
+	store	$r9, $r28, 0
+	store	$r5, $r28, 5
+	store	$r4, $r28, 4
+	store	$r8, $r28, 3
+	store	$r7, $r28, 2
+	store	$r6, $r28, 1
+	subi	$r3, $r3, 1
+	load	$r27, $r28, 0
+	jr	$r27
 
-!---------------------------------------------------------------------
-! args = [%g3]
-! fargs = []
-! ret type = Unit
-!---------------------------------------------------------------------
-init.585:
-	ldi	%g4, %g28, -8
-	ldi	%g5, %g28, -4
-	jlt	%g3, %g0, jge_else.1171
-	fmov	%f0, %f16
-	sti	%g5, %g1, 0
-	sti	%g3, %g1, 4
-	mov	%g3, %g4
-	sti	%g31, %g1, 12
-	subi	%g1, %g1, 16
+#---------------------------------------------------------------------
+# args = [$r3]
+# fargs = []
+# ret type = Unit
+#---------------------------------------------------------------------
+init.621:
+	load	$r4, $r28, 2
+	load	$r5, $r28, 1
+	blt	$r3, $r0, bge_else.1234
+	fmov	$f0, $f16
+	store	$r28, $r30, 0
+	store	$r5, $r30, -1
+	store	$r3, $r30, -2
+	mov	$r3, $r4
+	store	$r31, $r30, -4
+	subi	$r30, $r30, 5
 	jal	min_caml_create_float_array
-	addi	%g1, %g1, 16
-	ldi	%g31, %g1, 12
-	ldi	%g4, %g1, 4
-	slli	%g5, %g4, 2
-	ldi	%g6, %g1, 0
-	st	%g3, %g6, %g5
-	subi	%g3, %g4, 1
-	ldi	%g27, %g28, 0
-	b	%g27
-jge_else.1171:
-	b	%g31
+	addi	$r30, $r30, 5
+	load	$r31, $r30, -4
+	load	$r4, $r30, -2
+	slli	$r5, $r4, 0
+	load	$r6, $r30, -1
+	add	$r27, $r6, $r5
+	store	$r3, $r27, 0
+	subi	$r3, $r4, 1
+	load	$r28, $r30, 0
+	load	$r27, $r28, 0
+	jr	$r27
+bge_else.1234:
+	jr	$r31
 
-!---------------------------------------------------------------------
-! args = [%g3, %g4]
-! fargs = []
-! ret type = Array(Array(Float))
-!---------------------------------------------------------------------
-make.477:
-	subi	%g5, %g0, -12
-	sti	%g3, %g1, 0
-	sti	%g4, %g1, 4
-	mov	%g4, %g5
-	sti	%g31, %g1, 12
-	subi	%g1, %g1, 16
+#---------------------------------------------------------------------
+# args = [$r3, $r4]
+# fargs = []
+# ret type = Array(Array(Float))
+#---------------------------------------------------------------------
+make.513:
+	subi	$r5, $r0, -3
+	store	$r3, $r30, 0
+	store	$r4, $r30, -1
+	mov	$r4, $r5
+	store	$r31, $r30, -3
+	subi	$r30, $r30, 4
 	jal	min_caml_create_array
-	addi	%g1, %g1, 16
-	ldi	%g31, %g1, 12
-	mov	%g28, %g2
-	addi	%g2, %g2, 12
-	setL %g4, init.585
-	sti	%g4, %g28, 0
-	ldi	%g4, %g1, 4
-	sti	%g4, %g28, -8
-	sti	%g3, %g28, -4
-	ldi	%g4, %g1, 0
-	subi	%g4, %g4, 1
-	sti	%g3, %g1, 8
-	mov	%g3, %g4
-	ldi	%g27, %g28, 0
-	subi	%g1, %g1, 16
-	callR	%g27
-	addi	%g1, %g1, 16
-	ldi	%g3, %g1, 8
-	b	%g31
+	addi	$r30, $r30, 4
+	load	$r31, $r30, -3
+	mov	$r28, $r29
+	addi	$r29, $r29, 3
+	setl $r4, init.621
+	store	$r4, $r28, 0
+	load	$r4, $r30, -1
+	store	$r4, $r28, 2
+	store	$r3, $r28, 1
+	load	$r4, $r30, 0
+	subi	$r4, $r4, 1
+	store	$r3, $r30, -2
+	mov	$r3, $r4
+	store	$r31, $r30, -4
+	subi	$r30, $r30, 5
+	load	$r27, $r28, 0
+	jalr	$r27
+	addi	$r30, $r30, 5
+	load	$r31, $r30, -4
+	load	$r3, $r30, -2
+	jr	$r31

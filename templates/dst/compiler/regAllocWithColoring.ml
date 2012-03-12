@@ -31,9 +31,9 @@ let rec g dest cont regenv = function (* 命令列のレジスタ割り当て (c
       let r = 
       	if is_reg x then x 
       	else if t = Type.Unit then
-      		"%g0"
+      		reg_0
       	else
-      		try M.find x !Coloring.color with Not_found -> Printf.eprintf "not found %s\n" x; assert false in
+      		try M.find x !Coloring.color with Not_found -> failwith (Printf.sprintf "not found %s\n" x) in
 	  let (e2', regenv2) = g dest cont (add x r regenv1) e in
 	  (concat e1' (r, t) e2', regenv2)
 and g'_and_restore dest cont regenv exp = (* 使用される変数をスタックからレジスタへRestore (caml2html: regalloc_unspill) *)
@@ -96,16 +96,14 @@ and g'_call id dest cont regenv exp constr ys zs = (* 関数呼び出しのレ�
 		(*	Printf.printf "\t(%s, %s)\n" x (if M.mem x regenv then M.find x regenv else "");
 		*)	if x = fst dest || not (M.mem x regenv) then (* 返り値と同じレジスタ/まだ登録されていない変数は退避しない *)
 				(e, env)
-			else if S.mem (M.find x regenv) (Asm.get_use_regs id) then
-				begin
-(*					Printf.printf "Save %s = %s\n" (M.find x regenv) x;*)
-					(seq (Save (M.find x regenv, x), e), env)
-				end
-			else if id = !cur_fun then	(* 自己再帰なら問答無用で退避 *)
-				begin
-(*					Printf.printf "Save %s = %s\n" (M.find x regenv) x;*)
-					(seq (Save (M.find x regenv, x), e), env)
-				end
+			else if S.mem (M.find x regenv) (Asm.get_use_regs id) then (
+(*				Printf.printf "Save %s = %s\n" (M.find x regenv) x;*)
+				(seq (Save (M.find x regenv, x), e), env)
+			)
+			else if id = !cur_fun then	(* 自己再帰なら問答無用で退避 *) (
+(*				Printf.printf "Save %s = %s\n" (M.find x regenv) x;*)
+				(seq (Save (M.find x regenv, x), e), env)
+			)
 			else (* 登録されてはいるが退避しなくてもいいレジスタ *)
 				(e, M.add x (M.find x regenv) env))
 		(Ans (constr
@@ -136,8 +134,8 @@ and get_use_regs' id = function
 	| SetL (Id.L x) -> Asm.get_use_regs x						(* 登録された情報を参照 *)
 	| _ -> S.empty												(* それ以外の式に現れるレジスタは退避しなくてもいい *)
 	
-let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
-	(*Printf.printf "<%s>\n" x;*)
+let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレジスタ割り当て *)
+	(*Printf.eprintf "allocate %s\n" x;*)
 
 	(* すべての関数はvirtual.mlでfundataに登録されているはず *)
 	let data =
@@ -160,7 +158,7 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数�
 	let (e', _) = g (data.ret_reg, t) cont regenv e in
 	
 	(* use_regsを正しい値にする。（この時点では allregs @ allfregs がuse_regsに入っている） *)
-	(* 正しい値とは、e'の中で使用されるレジスタ＋引数＋返り値（%g3または%f0） *)
+	(* 正しい値とは、e'の中で使用されるレジスタ＋引数＋返り値（＄r3または＄f0） *)
 	fundata := M.add x data !fundata;
 	let env = S.union (S.of_list data.arg_regs) (S.add data.ret_reg (get_use_regs x e')) in
 	let env = S.filter is_reg env in
@@ -181,7 +179,7 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数�
 		ret = t }
 
 let f (Block.Prog(fundefs, main_fun)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
-	Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
+	Format.eprintf "start register allocation(graph coloring): may take some time.@.";
 	(* メイン関数以外を彩色してAsmに戻してレジスタ割り当て *)
 	let fundefs' = 
 		List.map (

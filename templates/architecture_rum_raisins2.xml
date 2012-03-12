@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<architecture name="ram_raisins">
+	<registers>
+		<!-- %は特殊文字として扱われるためとしてエスケープする -->
+		<intRegs num="32" prefix="$r"/>
+		<floatRegs num="32" prefix="$f"/>
+		<constFloatRegs num="16"/>
+		<zeroReg index="0"/>
+		<frameReg index="30"/>
+		<heapReg index="29"/>
+		<oneReg index="1"/>
+		<minusOneReg index="2"/>
+		<!-- indexを""にすると汎用レジスタとは別に用意されたレジスタが使われる -->
+		<linkReg index="31"/>
+	</registers>
+	<RAM size="8.0" />
+	<comment text=";;"/>
+
+	<!-- constTableType -->
+	<!-- ヒープ初期化部分と命令データを別ファイルに書き込む -->
+	<binary endian="BIG" constTableType="no_use" tag="0xffFFffFF" addressing="word" rom_addressing="word" direction="toBig"/>
+	
+	<!-- 固定する機能（命令形式など）はこのファイルには書かない（ミスリードになるから） -->
+	<!-- op, functともに６ビット(0 ~ 63) -->
+	<instructions forward="true">
+		<CONST>
+			<ALU value="0x1"/>
+			<FPU value="0x2"/>
+			<Move value="0x3"/>
+			<System value="0x0"/>
+		</CONST>
+		<!-- ireg <- op ireg -->
+		<MOV name="mov" op="Move" funct="0" explain="値のコピー"/>
+
+		<!-- regi op regi -->
+		<ADD name="add" op="ALU" funct="0" explain="整数同士の足し算"/>
+		<SUB name="sub" op="ALU" funct="1" explain="整数同士の引き算"/>
+		<MUL use="false" name="mul"  op="ALU" funct="0x3B" explain="整数同士の掛け算"/>
+		<DIV use="false" name="div"  op="ALU" funct="4" explain="整数同士の割り算"/>
+		<SLL use="false" name="sll" op="ALU" funct="5" explain="論理左シフト"/>
+		<SLA use="false" name="sla" op="ALU" funct="6" explain="算術左シフト"/>
+		<SRL use="false" name="srll" op="ALU" funct="7" explain="論理右シフト"/>
+		<SRA use="false" name="srl" op="ALU" funct="8" explain="算術右シフト"/>
+		<SHIFT name="shiftr" op="ALU" funct="0x3E" explain="算術右シフト"/>
+		<AND name="and" op="ALU" funct="2" explain="論理積"/>
+		<OR name="or" op="ALU" funct="3" explain="論理和"/>
+		<NOR use="false" name="nor" op="ALU" funct="50" explain="論理和"/>
+		<XOR name="xor" op="ALU" funct="4" explain="排他的論理和"/>
+		<NOT use="false" name="not" op="ALU" funct="11" explain="論理否定"/>
+
+		<!-- regi op imm -->
+		<ADDI name="addi" op="0x20" explain="整数同士の足し算(即値)"/>
+		<SUBI name="subi" op="0x21" explain="整数同士の引き算(即値)"/>
+		<MULI use="false" name="muli" op="0x3C" explain="整数同士の掛け算(即値)"/>
+		<DIVI use="false" name="divi" op="6" explain="整数同士の割り算(即値)"/>
+		<SLLI use="false" name="sll" op="0x23" explain="論理左シフト(即値)"/>
+		<SLAI use="false" name="slai" op="8" explain="算術左シフト(即値)"/>
+		<SRLI use="false" name="srlli" op="9" explain="論理右シフト(即値)"/>
+		<SRAI use="false" name="srl" op="0x22" explain="算術右シフト(即値)"/>
+		<SHIFTI name="shift" op="0x3D" explain="算術シフト（符号に応じて右・左が変わる）"/>
+		<ANDI use="false" name="andi" op="0x04" explain="論理積(即値)"/>
+		<ORI use="false" name="ori" op="0x05" explain="論理和(即値)"/>
+		<NORI use="false" name="nori" op="50" explain="論理和(即値)"/>
+		<XORI use="false" name="xori" op="0x06" explain="排他的論理和(即値)"/>
+
+		<!-- regf op regf -->
+		<FADD name="fadd" op="FPU" funct="0x00" explain="浮動小数点数同士の足し算"/>
+		<FSUB name="fsub" op="FPU" funct="0x01" explain="浮動小数点数同士の引き算"/>
+		<FMUL name="fmul" op="FPU" funct="0x03" explain="浮動小数点数同士の掛け算"/>
+		<FMULN name="fmuln" op="FPU" funct="0x05" explain="浮動小数点数同士の掛け算*-1"/>
+		<FDIV use="false" name="fdiv" op="FPU" funct="0x0C" explain="浮動小数点数同士の割り算"/>
+
+		<!-- op regf -->
+		<FINV name="finv" formAsm="FRD, FRS" op="FPU" funct="0x04" explain="浮動小数点数の逆数"/>
+		<FINVN name="finvn" op="FPU" funct="0x06" explain="浮動小数点数の逆数*-1"/>
+		<FSQRT name="fsqrt" formAsm="FRD, FRS" op="FPU" funct="0x07" explain="浮動小数点数の平方根"/>
+		<FABS use="false" name="fabs" op="FPU" funct="6" explain="浮動小数点数の絶対値"/>
+		<FMOV name="fmov" op="Move" funct="1" explain="memcpy"/>
+		<FNEG name="fneg" formAsm="FRD, FRS" op="FPU" funct="0x02" explain="浮動小数点数の符号反転"/>
+		<FLOOR use="false" name="floor" op="FPU" funct="0x08" explain="浮動小数点数同士の割り算"/>
+		<FSIN use="false" name="fsin" op="FPU" funct="0x04" explain="正弦"/>
+		<FCOS use="false" name="fcos" op="FPU" funct="0x05" explain="余弦"/>
+		<FTAN use="false" name="ftan" op="FPU" funct="0x0D" explain="正接"/>
+		<FATAN use="false" name="fatan" op="FPU" funct="0x06" explain="逆正接"/>
+
+		<!-- ireg <- op ireg-->
+		<ITOF use="false" name="itof" op="FPU" funct="0x09" explain="int_of_float"/>
+		<IMOVF name="imovf" op="Move" funct="3" explain="memcpy"/>
+
+		<!-- freg <- op ireg-->
+		<FTOI use="false" name="ftoi" op="FPU" funct="0x0A" explain="float_of_int"/>
+		<FMOVI name="fmovi" op="Move" funct="2" explain="memcpy"/>
+
+		<!-- SET -->
+		<SETLO name="lli" op="0x24" explain="整数レジスタ下位16ビットに即値代入"/>
+		<SETHI name="lui" op="0x25" explain="整数レジスタ上位16ビットに即値代入"/>
+		<FSETLO name="flli" op="0x27" explain="浮動小数レジスタ下位16ビットに即値代入"/>
+		<FSETHI name="flui" op="0x28" explain="浮動小数レジスタ上位16ビットに即値代入"/>
+
+		<!-- branch -->
+		<BRANCH name="j" op="0x33" explain="無条件分岐"/>
+		<BEQ use="false" name="beq" op="19" addressMode="relative" explain="条件分岐(=)"/>
+		<BNE name="bne" op="0x2D" addressMode="relative" explain="条件分岐(＜＞)"/>
+		<BLT name="blt" op="0x2E" addressMode="relative" explain="条件分岐(＜)"/>
+		<BLE use="false" name="ble" addressMode="relative" op="22" explain="条件分岐(＜=)"/>
+		<BGT use="false" name="bgt" addressMode="relative" op="23" explain="条件分岐(＞)"/>
+		<BGE use="false" name="bge" addressMode="relative" op="24" explain="条件分岐(＜=)"/>
+
+		<!-- branch float -->
+		<FBEQ use="false" name="fbeq" op="25" addressMode="relative" explain="浮動小数の条件分岐(=)"/>
+		<FBNE name="fbne" op="0x31" addressMode="relative" explain="浮動小数の条件分岐(＜＞)"/>
+		<FBLT name="fblt" op="0x32" addressMode="relative" explain="浮動小数の条件分岐(＜)"/>
+		<FBLE use="false" name="fjle" op="28" addressMode="relative" explain="浮動小数の条件分岐(＜=)"/>
+		<FBGT use="false" name="fjgt" op="29" addressMode="relative" explain="浮動小数の条件分岐(＞)"/>
+		<FBGE use="false" name="fjge" op="30" addressMode="relative" explain="浮動小数の条件分岐(＞=)"/>
+
+		<!-- jmp, call, return -->
+		<JMPREG name="jr" op="0x35" explain="レジスタの値へジャンプ"/>
+
+		<JMP_LNK name="jal" op="0x34" explain="リンクレジスタを退避してラベルへジャンプ"/>
+		<JMPREG_LNK name="jalr" op="0x36" explain="リンクレジスタを退避してレジスタの値へジャンプ"/>
+
+		<CALL use="false" name="call" op="31" explain="関数呼び出し"/>
+		<CALLREG use="false" name="callR" op="ALU" funct="14" explain="クロージャ呼び出し"/>
+		<RETURN use="false" name="return" op="32" explain="関数呼び出しから返る"/>
+
+		<!-- memory access -->
+		<ST use="false" name="storer" op="0x37" explain="整数ストア"/>
+		<LD use="false" name="loadr" op="0x38" explain="整数ロード"/>
+		<FST use="false" name="fstorer" op="0x39" explain="浮動小数ストア"/>
+		<FLD use="false" name="floadr" op="0x3A" explain="浮動小数ロード"/>
+		<STI name="store" op="0x2A" explain="整数ストア(即値)"/>
+		<LDI name="load" op="0x29" explain="整数ロード(即値)"/>
+		<FSTI name="fstore" op="0x2C" explain="浮動小数ストア(即値)"/>
+		<FLDI name="fload" op="0x2B"  explain="浮動小数ロード(即値)"/>
+
+		<!-- I/O -->
+		<INPUTBYTE name="iold" formAsm="IRT" op="System" funct="1" explain="１バイトを整数レジスタ入力"/>
+		<INPUTWORD use="false" name="inputw" op="IO" funct="1" explain="4バイトを整数レジスタに入力"/>
+		<INPUTFLOAT use="false" name="inputf" op="IO" funct="2" explain="4バイトを浮動小数レジスタ入力"/>
+		<OUTPUTBYTE name="iost" op="System" funct="2" explain="下位１バイトを出力"/>
+		<OUTPUTWORD use="false" name="outputw" op="IO" funct="4" explain="整数レジスタ4バイトを出力"/>
+		<OUTPUTFLOAT use="false" name="outputf" op="IO" funct="5" explain="浮動小数レジスタ4バイトを出力"/>
+
+		<!-- others -->
+		<HALT name="hlt" op="System" funct="3" explain="プログラム終了"/>
+
+		<!-- mnemonic -->
+		<mnemonics>
+			<NOP name="nop" formAsm="">
+				<inst command="&quot;add\t$r0, $r0, $r0&quot;"/>
+			</NOP>
+			<MOV name="mov" formAsm="IRT, IRS">
+				<inst command="&quot;add\t$r%d, $r%d, $r0&quot;, rt, rs"/>
+			</MOV>
+			<NOT use="false" formAsm="IRT, IRS">
+				<inst command="&quot;nor\t$r%d, $r%d, $r0&quot;, rt, rs, rs" />
+			</NOT>
+			<NEG name="neg" formAsm="IRT, IRS">
+				<inst command="&quot;sub\t$r%d, $r0, $r%d&quot;, rt, rs"/>
+			</NEG>
+			<SETL name="setl" formAsm="IRS, LABEL">
+				<inst useLabel="true" command="&quot;addi\t$r%d, $r0, 0&quot;, rs"/>
+			</SETL>
+			<!-- fset %f0, 0.1 -->
+			<!-- Dはdouble型の即値を表す -->
+			<FSET name="fliw" formAsm="FRS, FLOAT">
+				<inst command="&quot;flli\t$f%d, %d&quot;, rs, gethi(d)"/>
+				<inst command="&quot;flui\t$f%d, %d&quot;, rs, getlo(d)"/>
+			</FSET>
+		</mnemonics>
+	</instructions>
+</architecture>

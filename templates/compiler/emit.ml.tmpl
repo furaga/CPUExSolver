@@ -6,6 +6,19 @@
 	constTableType = xmlroot.find(".//binary").get("constTableType").strip()
 	addressing = xmlroot.find(".//binary").get("addressing")
 	addressingUnit = 4 if addressing == "byte" else 1
+	
+	## fsinやfcosなどがつかえたら、定義された関数ではなくコマンドを呼び出すようにする
+	## そのために使うデータ
+	fpis = [
+		{"type" : "FSQRT", "funs" : ["min_caml_sqrt"]},
+		{"type" : "FLOOR", "funs" : ["min_caml_floor"]},
+		{"type" : "FSIN", "funs" : ["min_caml_sin"]},
+		{"type" : "FCOS", "funs" : ["min_caml_cos"]},
+		{"type" : "FTAN", "funs" : ["min_caml_tan"]},
+		{"type" : "FATAN", "funs" : ["min_caml_atan"]},
+		{"type" : "FTOI", "funs" : ["min_caml_int_of_float", "min_caml_truncate"]},
+		{"type" : "ITOF", "funs" : ["min_caml_float_of_int"]}
+	]
 
 	def getInst(type):
 		inst = xmlroot.find(".//" + type)
@@ -49,6 +62,7 @@
 		if  isUse("CALL") and isUse("CALLREG") and isUse("RETURN"):
 			return "Output.Return"
 		else:
+			assert xmlroot.find(".//linkReg").get("index") != "", "link register must be one of int register in this architecture."
 			return "(Output.B reg_lk)"
 	
 %>open Asm
@@ -157,7 +171,7 @@ and g' oc = function
 				(s lsl 31) + (exp lsl 23) + frac
 			) in
 		Output.add_stmt (Output.Comment (Printf.sprintf "\t${comment} %f" f));
-## SETHI, SETLO, STI, LDI, FSTI, FLDIは絶対ある
+## SETHI, SETLO, STI, LDIは絶対ある
 % if isUse("FSETHI") and isUse("FSETLO"):
 		Output.add_stmt (Output.FMvhi (x, (b lsr 16) mod (1 lsl 16)));
 		Output.add_stmt (Output.FMvlo (x, (b mod (1 lsl 16))));
@@ -166,21 +180,42 @@ and g' oc = function
 		  	Output.add_stmt (Output.Addi (reg_sw, reg_0, b));
 		  	let ss = get_stacksize () in
 		  	Output.add_stmt (Output.Sti (reg_sw, reg_sp, ss));
+	% if isUse("FLDI"):
 		  	Output.add_stmt (Output.LdFi (x, reg_sp, ss));
+	% elif isUse("LDI") and isUse("IMOVF"):
+			Output.add_stmt (Output.Ldi (reg_sw, reg_sp, ss));
+			Output.add_stmt (Output.IMovF (x, reg_sw))
+	% else:
+			failwith "this architecture must support LdFi or IMovF" 
+	% endif
 		)
 		else (
 		  	Output.add_stmt (Output.Mvhi (reg_sw, (b lsr 16) mod (1 lsl 16)));
 		  	Output.add_stmt (Output.Mvlo (reg_sw, (b mod (1 lsl 16))));
 		  	let ss = get_stacksize () in
 		  	Output.add_stmt (Output.Sti (reg_sw, reg_sp, ss));
+	% if isUse("FLDI"):
 		  	Output.add_stmt (Output.LdFi (x, reg_sp, ss));
+	% elif isUse("LDI") and isUse("IMOVF"):
+			Output.add_stmt (Output.Ldi (reg_sw, reg_sp, ss));
+			Output.add_stmt (Output.IMovF (x, reg_sw))
+	% else:
+			failwith "this architecture must support LdFi or IMovF" 
+	% endif
 		)
 % else:
 	  	Output.add_stmt (Output.Mvhi (reg_sw, (b lsr 16) mod (1 lsl 16)));
 	  	Output.add_stmt (Output.Mvlo (reg_sw, (b mod (1 lsl 16))));
 	  	let ss = get_stacksize () in
 	  	Output.add_stmt (Output.Sti (reg_sw, reg_sp, ss));
-	  	Output.add_stmt (Output.LdFi (x, reg_sp, ss))
+	% if isUse("FLDI"):
+	  	Output.add_stmt (Output.LdFi (x, reg_sp, ss));
+	% elif isUse("LDI") and isUse("IMOVF"):
+		Output.add_stmt (Output.Ldi (reg_sw, reg_sp, ss));
+		Output.add_stmt (Output.IMovF (x, reg_sw))
+	% else:
+		failwith "this architecture must support LdFi or IMovF" 
+	% endif
 % endif
 
 	| NonTail(x), Mov(y) when x = y -> ()
@@ -252,7 +287,8 @@ and g' oc = function
 
 	## sll, slli, sraiは必須
 	| NonTail(x), SLL(y, V(z)) ->
-		Output.add_stmt (Output.SLL (x, y, z))
+		(* 第二引数が変数となるシフト命令は発行されない *)
+		failwith "This compiler should not generate \"SLL(y, V(z))\"."
 
 	| NonTail(x), SLL(y, C(z)) when z >= 0 ->
 		Output.add_stmt (Output.SLLi (x, y, z))
@@ -358,12 +394,25 @@ and g' oc = function
 	% else:
 		Output.add_stmt (Output.Add (reg_sw, y, z));
 	% endif
+	% if isUse("FLDI"):
 		Output.add_stmt (Output.LdFi (x, reg_sw, 0))
+	% elif isUse("LDI") and isUse("IMOVF"):
+		Output.add_stmt (Output.Ldi (reg_sw, reg_sw, 0));
+		Output.add_stmt (Output.IMovF (x, reg_sw))
+	% else:
+		failwith "this architecture must support LdFi or IMovF" 
+	% endif
 % endif	
 
 	| NonTail(x), LdF(y, C(z)) ->
+	% if isUse("FLDI"):
 		Output.add_stmt (Output.LdFi (x, y, z))
-
+	% elif isUse("LDI") and isUse("IMOVF"):
+		Output.add_stmt (Output.Ldi (reg_sw, y, z));
+		Output.add_stmt (Output.IMovF (x, reg_sw))
+	% else:
+		failwith "this architecture must support LdFi or IMovF" 
+	% endif
 	| NonTail(_), StF(x, y, V(z)) ->
 % if isUse("FST"):
 	% if direction == "toSmall":
@@ -380,12 +429,29 @@ and g' oc = function
 	% else:
 		Output.add_stmt (Output.Add (reg_sw, y, z));
 	% endif
+	% if isUse("FSTI"):
 		Output.add_stmt (Output.StFi (x, reg_sw, 0))
+	% elif isUse("STI") and isUse("FMOVI"):
+		let ss = get_stacksize() in
+		Output.add_stmt (Output.Sti (regs.(0), reg_sp, ss));
+		Output.add_stmt (Output.FMovI (regs.(0), x));
+		Output.add_stmt (Output.Sti (regs.(0), reg_sw, 0));
+		Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss))
+	% else:
+		failwith "this architecture must support LdFi or IMovF" 
+	% endif
 % endif	
 
 	| NonTail(_), StF(x, y, C(z)) ->
+% if isUse("FSTI"):
 		Output.add_stmt (Output.StFi (x, y, z))
-
+% elif isUse("STI") and isUse("FMOVI"):
+		let ss = get_stacksize() in
+		Output.add_stmt (Output.FMovI (reg_sw, x));
+		Output.add_stmt (Output.Sti (reg_sw, y, z))
+% else:
+		failwith "this architecture must support LdFi or IMovF" 
+% endif
 	| NonTail(_), Comment(s) ->
 		Output.add_stmt (Output.Comment (Printf.sprintf "\t${comment} %s\n" s))
 
@@ -398,7 +464,15 @@ and g' oc = function
 	| NonTail(_), Save(x, y) when List.mem x (reg_fsw :: allfregs) && not (M.mem y !stackmap) ->
 		save y;
 		let offset = get_offset y in
+% if isUse("FSTI"):
 		Output.add_stmt (Output.StFi (x, reg_sp, offset))
+% elif isUse("STI") and isUse("FMOVI"):
+		let ss = get_stacksize() in
+		Output.add_stmt (Output.FMovI (reg_sw, x));
+		Output.add_stmt (Output.Sti (reg_sw, reg_sp, offset))
+% else:
+		failwith "this architecture must support LdFi or IMovF" 
+% endif
 
 	| NonTail(_), Save(x, y) ->
 		(* reg_fgsに含まれるレジスタなので退避しない *)
@@ -412,7 +486,14 @@ and g' oc = function
 		Output.add_stmt (Output.Ldi (x, reg_sp, (get_offset y)))
 
 	| NonTail(x), Restore(y) when List.mem x allfregs ->
+	% if isUse("FLDI"):
 		Output.add_stmt (Output.LdFi (x, reg_sp, (get_offset y)))
+	% elif isUse("LDI") and isUse("IMOVF"):
+		Output.add_stmt (Output.Ldi (reg_sw, reg_sp, (get_offset y)));
+		Output.add_stmt (Output.IMovF (x, reg_sw))
+	% else:
+		failwith "this architecture must support LdFi or IMovF" 
+	% endif
 
 	| NonTail(x), Restore(y) ->
 		(* reg_fgsに含まれるレジスタなので復帰しない *)
@@ -599,16 +680,23 @@ and g' oc = function
 
 	| Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
 		(match x with
-	  		| "min_caml_fabs" 
-	  		| "min_caml_abs_float" ->
-				Output.add_stmt (Output.FAbs (fregs.(0), (assert (List.length zs > 0); List.hd zs)));
+% for fpi in filter(lambda fpi: isUse(fpi["type"]), fpis):
+	% for funName in fpi["funs"]:
+	  		| "${funName}"
+	% endfor
+			->
+				Output.add_stmt (Output.FPI ("${getName(fpi["type"])}", ${"regs.(0)" if fpi["type"] in ["FTOI"] else "fregs.(0)"}, (assert (List.length ${"ys" if fpi["type"] in ["ITOF"] else "zs"} > 0); List.hd ${"ys" if fpi["type"] in ["ITOF"] else "zs"})));
 				Output.add_stmt ${_return()}
-	  		| "min_caml_sqrt" ->
-				Output.add_stmt (Output.FSqrt (fregs.(0), (assert (List.length zs > 0); List.hd zs)));
-				Output.add_stmt ${_return()}
+% endfor
 		  	| "min_caml_print_newline" ->
 				g'_args oc x [] ys zs;
+% if isUse("ADDI"):
 				Output.add_stmt (Output.Addi (regs.(0), reg_0, 10));
+% else:
+				Output.add_stmt (Output.Mvhi (reg_sw, 0));
+				Output.add_stmt (Output.Mvlo (reg_sw, 10));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
+% endif
 				Output.add_stmt (Output.Output regs.(0));
 				Output.add_stmt ${_return()}
 		  	| "min_caml_print_char"
@@ -627,16 +715,42 @@ and g' oc = function
   | NonTail(a), CallCls(x, ys, zs) -> (* レジスタで飛ぶジャンプ *)
 		g'_args oc x [(x, reg_cl)] ys zs;
 		let ss = get_stacksize () in
-		Output.add_stmt (Output.Ldi (reg_sw, reg_cl, 0));
+		
 % if  isUse("CALL") and isUse("CALLREG") and isUse("RETURN"):
+	% if isUse("SUBI"):
 		Output.add_stmt (Output.Subi (reg_sp, reg_sp, ss));
+	% else:
+		Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+		Output.add_stmt (Output.Sub (reg_sp, reg_sp, reg_sw));
+	% endif
+		Output.add_stmt (Output.Ldi (reg_sw, reg_cl, 0));
 		Output.add_stmt (Output.CallR reg_sw);
+	% if isUse("ADDI"):
 		Output.add_stmt (Output.Addi (reg_sp, reg_sp, ss)); 
+	% else:
+		Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+		Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw)); 
+	% endif
 % else:
 		Output.add_stmt (Output.Sti (reg_lk, reg_sp, ss));
+	% if isUse("SUBI"):
 		Output.add_stmt (Output.Subi (reg_sp, reg_sp, ss + ${addressingUnit}));
+	% else:
+		Output.add_stmt (Output.Mvhi (reg_sw, ((ss + ${addressingUnit}) lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, (ss + ${addressingUnit}) mod (1 lsl 16)));
+		Output.add_stmt (Output.Sub (reg_sp, reg_sp, reg_sw));
+	% endif
+		Output.add_stmt (Output.Ldi (reg_sw, reg_cl, 0));
 		Output.add_stmt (Output.Jarl reg_sw);
+	% if isUse("ADDI"):
 		Output.add_stmt (Output.Addi (reg_sp, reg_sp, ss + ${addressingUnit})); 
+	% else:
+		Output.add_stmt (Output.Mvhi (reg_sw, ((ss + ${addressingUnit}) lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, (ss + ${addressingUnit}) mod (1 lsl 16)));
+		Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
+	% endif
 		Output.add_stmt (Output.Ldi (reg_lk, reg_sp, ss));
 % endif
 		(if List.mem a allregs && a <> regs.(0) then
@@ -647,15 +761,23 @@ and g' oc = function
 
   | NonTail(a), CallDir(Id.L(x), ys, zs) -> (* ラベルで飛ぶジャンプ *)
 	  	(match x with
-	  		| "min_caml_fabs" 
-	  		| "min_caml_abs_float" ->
-				Output.add_stmt (Output.FAbs (a, (assert (List.length zs > 0); List.hd zs)))
-	  		| "min_caml_sqrt" ->
-				Output.add_stmt (Output.FSqrt (a, (assert (List.length zs > 0); List.hd zs)))
+% for fpi in filter(lambda fpi: isUse(fpi["type"]), fpis):
+	% for funName in fpi["funs"]:
+	  		| "${funName}"
+	% endfor
+			->
+				Output.add_stmt (Output.FPI ("${getName(fpi["type"])}", a, (assert (List.length ${"ys" if fpi["type"] in ["ITOF"] else "zs"} > 0); List.hd ${"ys" if fpi["type"] in ["ITOF"] else "zs"})))
+% endfor
 		  	| "min_caml_print_newline" ->
 				let ss = get_stacksize () in
 				Output.add_stmt (Output.Sti (regs.(0), reg_sp, ss));
+% if isUse("ADDI"):
 				Output.add_stmt (Output.Addi (regs.(0), reg_0, 10));
+% else:
+				Output.add_stmt (Output.Mvhi (reg_sw, 0));
+				Output.add_stmt (Output.Mvlo (reg_sw, 10));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
+% endif
 				Output.add_stmt (Output.Output regs.(0));
 				Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss))
 		  	| "min_caml_print_char"
@@ -668,14 +790,38 @@ and g' oc = function
 				g'_args oc x [] ys zs;
 				let ss = get_stacksize () in
 % if  isUse("CALL") and isUse("CALLREG") and isUse("RETURN"):
+	% if isUse("SUBI"):
 				Output.add_stmt (Output.Subi (reg_sp, reg_sp, ss));
+	% else:
+				Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+				Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+				Output.add_stmt (Output.Sub (reg_sp, reg_sp, reg_sw));
+	% endif
 				Output.add_stmt (Output.Call x);
+	% if isUse("ADDI"):
 				Output.add_stmt (Output.Addi (reg_sp, reg_sp, ss)); 
+	% else:
+				Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+				Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
+	% endif
 % else:
 				Output.add_stmt (Output.Sti (reg_lk, reg_sp, ss));
+	% if isUse("SUBI"):
 				Output.add_stmt (Output.Subi (reg_sp, reg_sp, ss + ${addressingUnit}));
+	% else:
+				Output.add_stmt (Output.Mvhi (reg_sw, ((ss + ${addressingUnit}) lsr 16) mod (1 lsl 16)));
+				Output.add_stmt (Output.Mvlo (reg_sw, (ss + ${addressingUnit}) mod (1 lsl 16)));
+				Output.add_stmt (Output.Sub (reg_sp, reg_sp, reg_sw));
+	% endif
 				Output.add_stmt (Output.Jal x);
+	% if isUse("ADDI"):
 				Output.add_stmt (Output.Addi (reg_sp, reg_sp, ss + ${addressingUnit})); 
+	% else:
+				Output.add_stmt (Output.Mvhi (reg_sw, ((ss + ${addressingUnit}) lsr 16) mod (1 lsl 16)));
+				Output.add_stmt (Output.Mvlo (reg_sw, (ss + ${addressingUnit}) mod (1 lsl 16)));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
+	% endif
 				Output.add_stmt (Output.Ldi (reg_lk, reg_sp, ss));
 % endif
 				if List.mem a allregs && a <> regs.(0) then
@@ -718,7 +864,7 @@ and g'_args oc name x_reg_cl ys zs =
 			let (reg_ls, freg_ls) = List.partition (fun x -> List.mem x Asm.allregs) arg_regs in
 			(Array.of_list reg_ls, Array.of_list freg_ls)
 		with
-		| Not_found -> print_endline ("not found args: " ^ name); (Asm.regs, Asm.fregs) in
+		| Not_found -> (Asm.regs, Asm.fregs) in
 	let (i, yrs) =
 		List.fold_left (
 			fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs)
@@ -756,7 +902,7 @@ let h oc { name = Id.L(x); args = args; fargs = fargs; body = e; ret = ret } =
 	g oc (Tail, e)
 
 let f oc (Prog(fundefs, e)) =
-	Format.eprintf "generating assembly...@.";
+	Format.eprintf "start generating assembly.@.";
 
 % if constTableType != "no_use":
 	Output.add_stmt (Output.Comment (Printf.sprintf ".init_heap_size\t0"));
@@ -766,8 +912,8 @@ let f oc (Prog(fundefs, e)) =
 	stackmap := M.empty;
 
 	(* reg_hp, reg_p1, reg_m1の初期化 *)
-	(* + 4してるのはヒープレジスタの退避用 *)
-	let pos = !GlobalEnv.offset + 4 in
+	(* + ${addressingUnit}してるのはヒープレジスタの退避用 *)
+	let pos = !GlobalEnv.offset + ${addressingUnit} in
 % if isUse("ADDI"):
 	Output.add_stmt (Output.Mvhi (reg_hp, (pos lsr 16) mod (1 lsl 16)));
 	Output.add_stmt (Output.Mvlo (reg_hp, pos mod (1 lsl 16)));
@@ -788,4 +934,6 @@ let f oc (Prog(fundefs, e)) =
 % if isUse("ADDI") and isUse("SUBI"):
 	Output.optimize ();
 % endif
-	Output.output oc
+	Output.output oc;
+	
+	Format.eprintf "finished generating assembly. compile done.@."

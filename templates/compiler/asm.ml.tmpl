@@ -116,9 +116,9 @@ let fundata = ref (M.add_list [
 let fletd(x, e1, e2) = Let((x, Type.Float), e1, e2)
 let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
-let get_arg_regs x = try (M.find x !fundata).arg_regs with Not_found -> Printf.eprintf "Not_found %s\n" x; assert false
-let get_ret_reg x = try (M.find x !fundata).ret_reg with Not_found -> Printf.eprintf "Not_found %s\n" x; assert false
-let get_use_regs x = try (M.find x !fundata).use_regs with Not_found -> Printf.printf "\tNotFound %s\n" x; S.of_list (allregs @ allfregs)
+let get_arg_regs x = try (M.find x !fundata).arg_regs with Not_found -> failwith (Printf.sprintf "Not_found %s\n" x)
+let get_ret_reg x = try (M.find x !fundata).ret_reg with Not_found -> failwith (Printf.sprintf "Not_found %s\n" x)
+let get_use_regs x = try (M.find x !fundata).use_regs with Not_found -> S.of_list (allregs @ allfregs)
 let is_reg x = (String.sub x 0 (String.length "${r}") = "${r}") || (String.sub x 0 (String.length "${f}") = "${f}")
 
 let rec remove_and_uniq xs = function

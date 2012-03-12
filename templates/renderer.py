@@ -10,6 +10,7 @@ addrUnit = 4 if xmlroot.find(".//binary").get("addressing") == "byte" else 1
 rom_addrUnit = 4 if xmlroot.find(".//binary").get("rom_addressing") == "byte" else 1
 addrDiv = " / 4" if addrUnit == 4 else ""
 direction =  xmlroot.find(".//binary").get("direction")
+relativeAddressOffset = int(xmlroot.find(".//binary").get("relativeAddressOffset", "0"))
 
 dirR = "-" if direction == "toSmall" else "+"
 dirI = "+" if direction == "toBig" else "-"
@@ -18,7 +19,7 @@ def getAddrMode(type):
 	return xmlroot.find(".//" + type).get("addressMode")
 
 def getBranchCode(cond, type):
-	return "if (" + cond + ") pc " + ("+= IMM - %d" % rom_addrUnit if getAddrMode('BEQ') == 'relative' else "= IMM")
+	return "if (" + cond + ") pc " + ("+= IMM + (%d)" % (-rom_addrUnit + relativeAddressOffset) if getAddrMode('BEQ') == 'relative' else "= IMM")
 
 # RS, RT, RDはformAsmの設定によって互いに役目を入れか得られる。
 instInfo = [
@@ -29,9 +30,10 @@ instInfo = [
 	{'type' : 'DIV', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = %(arg1)s / %(arg2)s"]},
 	{'type' : 'SLL', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = %(arg1)s << %(arg2)s"]},
 	{'type' : 'SLA', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = %(arg1)s << %(arg2)s"]},
-	{'type' : 'SRL', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = (unsigned)%(arg1)s >> %(arg2)s)"]},
+	{'type' : 'SRL', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = (unsigned)%(arg1)s >> %(arg2)s"]},
 	# g++ (Ubuntu 4.4.3-4ubuntu5) 4.4.3ではint32_tに対する >> 演算子は算術シフト
 	{'type' : 'SRA', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = %(arg1)s >> %(arg2)s"]},
+	{'type' : 'SHIFT', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["if (%(arg2)s >= 0) %(arg0)s = %(arg1)s << %(arg2)s", "else %(arg0)s = %(arg1)s >> (-%(arg2)s)"]},
 	# bool値の演算ではなく、ビット列に対する演算
 	{'type' : 'AND', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = %(arg1)s & %(arg2)s"]},
 	{'type' : 'OR', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%(arg0)s = %(arg1)s | %(arg2)s"]},
@@ -46,6 +48,7 @@ instInfo = [
 	{'type' : 'SLAI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%(arg0)s = %(arg1)s << IMM"]},
 	{'type' : 'SRLI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%(arg0)s = (unsigned)%(arg1)s >> IMM"]},
 	{'type' : 'SRAI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%(arg0)s = %(arg1)s >> IMM"]},
+	{'type' : 'SHIFTI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["if (IMM >= 0) %(arg0)s = %(arg1)s << IMM", "else %(arg0)s = %(arg1)s >> (-IMM)"]},
 	{'type' : 'ANDI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%(arg0)s = %(arg1)s & IMM"]},
 	{'type' : 'ORI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%(arg0)s = %(arg1)s | IMM"]},
 	{'type' : 'NORI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%(arg0)s = ~(%(arg1)s | IMM)"]},
@@ -53,8 +56,10 @@ instInfo = [
 	{'type' : 'FADD', 'formBin' : 'R', 'formAsm' : ['FRD', 'FRS', 'FRT'], 'code' : ["%(arg0)s = myfadd(%(arg1)s, %(arg2)s)"]},
 	{'type' : 'FSUB', 'formBin' : 'R', 'formAsm' : ['FRD', 'FRS', 'FRT'], 'code' : ["%(arg0)s = myfsub(%(arg1)s, %(arg2)s)"]},
 	{'type' : 'FMUL', 'formBin' : 'R', 'formAsm' : ['FRD', 'FRS', 'FRT'], 'code' : ["%(arg0)s = myfmul(%(arg1)s, %(arg2)s)"]},
+	{'type' : 'FMULN', 'formBin' : 'R', 'formAsm' : ['FRD', 'FRS', 'FRT'], 'code' : ["%(arg0)s = myfmul(%(arg1)s, -%(arg2)s)"]},
 	{'type' : 'FDIV', 'formBin' : 'R', 'formAsm' : ['FRD', 'FRS', 'FRT'], 'code' : ["%(arg0)s = myfdiv(%(arg1)s, %(arg2)s)"]},
 	{'type' : 'FINV', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = myfinv(%(arg1)s)"]},
+	{'type' : 'FINVN', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = myfinv(-%(arg1)s)"]},
 	{'type' : 'FSQRT', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = myfsqrt(%(arg1)s)"]},
 	{'type' : 'FABS', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = myfabs(%(arg1)s)"]},
 	{'type' : 'FMOV', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = %(arg1)s"]},
@@ -65,15 +70,14 @@ instInfo = [
 	{'type' : 'FTAN', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = myftan(%(arg1)s)"]},
 	{'type' : 'FATAN', 'formBin' : 'R', 'formAsm' : ['FRT', 'FRS'], 'code' : ["%(arg0)s = myfatan(%(arg1)s)"]},
 	{'type' : 'ITOF', 'formBin' : 'R', 'formAsm' : ['FRT', 'IRS'], 'code' : ["tmp1.f = (float)%(arg1)s", "%(arg0)s = tmp1.i"]},
-	{'type' : 'IMOVF', 'formBin' : 'R', 'formAsm' : ['FRT', 'IRS'], 'code' : ["%(arg0)s = %(arg1)s"]},
+	{'type' : 'IMOVF', 'formBin' : 'R', 'formAsm' : ['FRT', 'IRS'], 'code' : ["memcpy(&%(arg0)s, &%(arg1)s, 4)"]},
 	{'type' : 'FTOI', 'formBin' : 'R', 'formAsm' : ['IRT', 'FRS'], 'code' : ["tmp1.i = %(arg1)s", "%(arg0)s = (int32_t)tmp1.f"]},
-	{'type' : 'FMOVI', 'formBin' : 'R', 'formAsm' : ['IRT', 'FRS'], 'code' : ["%(arg0)s = %(arg1)s"]},
+	{'type' : 'FMOVI', 'formBin' : 'R', 'formAsm' : ['IRT', 'FRS'], 'code' : ["memcpy(&%(arg0)s, &%(arg1)s, 4)"]},
 	{'type' : 'SETLO', 'formBin' : 'I', 'formAsm' : ['IRS', 'IMM'], 'code' : ["%(arg0)s = (%(arg0)s & 0xffff0000) | (IMM & 0xffff)"]},
 	{'type' : 'SETHI', 'formBin' : 'I', 'formAsm' : ['IRS', 'IMM'], 'code' : ["%(arg0)s = ((uint32_t)IMM << 16) | (%(arg0)s & 0xffff)"]},
 	{'type' : 'FSETLO', 'formBin' : 'I', 'formAsm' : ['FRS', 'IMM'], 'code' : ["%(arg0)s = (%(arg0)s & 0xffff0000) | (IMM & 0xffff)"]},
 	{'type' : 'FSETHI', 'formBin' : 'I', 'formAsm' : ['FRS', 'IMM'], 'code' : ["%(arg0)s = ((uint32_t)IMM << 16) | (%(arg0)s & 0xffff)"]},
 	{'type' : 'BRANCH', 'formBin' : 'J', 'formAsm' : ['LABEL'], 'code' : ["pc = get_address(inst)"]},
-	## TODO : RS, RTが逆
 	{'type' : 'BEQ', 'formBin' : 'I', 'formAsm' : ['IRS', 'IRT', 'LABEL'], 'code' : [getBranchCode("%(arg0)s == %(arg1)s", "BEQ")]},
 	{'type' : 'BNE', 'formBin' : 'I', 'formAsm' : ['IRS', 'IRT', 'LABEL'], 'code' : [getBranchCode("%(arg0)s != %(arg1)s", "BNE")]},
 	{'type' : 'BLT', 'formBin' : 'I', 'formAsm' : ['IRS', 'IRT', 'LABEL'], 'code' : [getBranchCode("%(arg0)s <  %(arg1)s", "BLT")]},
@@ -91,17 +95,17 @@ instInfo = [
 	{'type' : 'JMP_LNK', 'formBin' : 'J', 'formAsm' : ['LABEL'], 'code' : ["LR = pc", "pc = get_address(inst)"]},
 	{'type' : 'JMPREG_LNK', 'formBin' : 'R', 'formAsm' : ['IRS'], 'code' : ["LR = pc", "pc = %(arg0)s"]},
 	# スタックやリンクレジスタの退避を行う関数呼び出し
-	{'type' : 'CALL', 'formBin' : 'J', 'formAsm' : ['LABEL'], 'code' : ["RAM[FR%s] = LR" % addrDiv, "FR -= %d" % addrUnit, "LR = pc", "pc = get_address(inst)"]},
-	{'type' : 'CALLREG', 'formBin' : 'R', 'formAsm' : ['IRS'], 'code' : ["RAM[FR%s] = LR" % addrDiv, "FR -= %d" % addrUnit, "LR = pc", "pc = %(arg0)s"]},
-	{'type' : 'RETURN', 'formBin' : 'R', 'formAsm' : [], 'code' : ["pc = LR", "FR += %d" % addrUnit, "LR = RAM[FR%s]" % addrDiv]},
-	{'type' : 'ST', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["RAM[(%%(arg1)s %s %%(arg2)s)%s] = %%(arg0)s" % (dirR, addrDiv)]},
-	{'type' : 'LD', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["%%(arg0)s = RAM[(%%(arg1)s %s %%(arg2)s)%s]" % (dirR, addrDiv)]},
-	{'type' : 'FST', 'formBin' : 'R', 'formAsm' : ['FRD', 'IRS', 'IRT'], 'code' : ["RAM[(%%(arg1)s %s %%(arg2)s)%s] = %%(arg0)s" % (dirR, addrDiv)]},
-	{'type' : 'FLD', 'formBin' : 'R', 'formAsm' : ['FRD', 'IRS', 'IRT'], 'code' : ["%%(arg0)s = RAM[(%%(arg1)s %s %%(arg2)s)%s]" % (dirR, addrDiv)]},
-	{'type' : 'STI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["RAM[(%%(arg1)s %s IMM)%s] = %%(arg0)s" % (dirI, addrDiv)]},
-	{'type' : 'LDI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["%%(arg0)s = RAM[(%%(arg1)s %s IMM)%s]" % (dirI, addrDiv)]},
-	{'type' : 'FSTI', 'formBin' : 'I', 'formAsm' : ['FRT', 'IRS', 'IMM'], 'code' : ["RAM[(%%(arg1)s %s IMM)%s] = %%(arg0)s" % (dirI, addrDiv)]},
-	{'type' : 'FLDI', 'formBin' : 'I', 'formAsm' : ['FRT', 'IRS', 'IMM'], 'code' : ["%%(arg0)s = RAM[(%%(arg1)s %s IMM)%s]" % (dirI, addrDiv)]},
+	{'type' : 'CALL', 'formBin' : 'J', 'formAsm' : ['LABEL'], 'code' : ["assert(FR >= 0)", "RAM[FR%s] = LR" % addrDiv, "FR -= %d" % addrUnit, "LR = pc", "pc = get_address(inst)"]},
+	{'type' : 'CALLREG', 'formBin' : 'R', 'formAsm' : ['IRS'], 'code' : ["assert(FR >= 0)", "RAM[FR%s] = LR" % addrDiv, "FR -= %d" % addrUnit, "LR = pc", "pc = %(arg0)s"]},
+	{'type' : 'RETURN', 'formBin' : 'R', 'formAsm' : [], 'code' : ["assert(FR >= 0)", "pc = LR", "FR += %d" % addrUnit, "LR = RAM[FR%s]" % addrDiv]},
+	{'type' : 'ST', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["assert(%%(arg1)s %s %%(arg2)s >= 0)" % dirR, "RAM[(%%(arg1)s %s %%(arg2)s)%s] = %%(arg0)s" % (dirR, addrDiv)]},
+	{'type' : 'LD', 'formBin' : 'R', 'formAsm' : ['IRD', 'IRS', 'IRT'], 'code' : ["assert(%%(arg1)s %s %%(arg2)s >= 0)" % dirR, "%%(arg0)s = RAM[(%%(arg1)s %s %%(arg2)s)%s]" % (dirR, addrDiv)]},
+	{'type' : 'FST', 'formBin' : 'R', 'formAsm' : ['FRD', 'IRS', 'IRT'], 'code' : ["assert(%%(arg1)s %s %%(arg2)s >= 0)" % dirR, "RAM[(%%(arg1)s %s %%(arg2)s)%s] = %%(arg0)s" % (dirR, addrDiv)]},
+	{'type' : 'FLD', 'formBin' : 'R', 'formAsm' : ['FRD', 'IRS', 'IRT'], 'code' : ["assert(%%(arg1)s %s %%(arg2)s >= 0)" % dirR, "%%(arg0)s = RAM[(%%(arg1)s %s %%(arg2)s)%s]" % (dirR, addrDiv)]},
+	{'type' : 'STI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["assert(%%(arg1)s %s IMM >= 0)" % dirI, "RAM[(%%(arg1)s %s IMM)%s] = %%(arg0)s" % (dirI, addrDiv)]},
+	{'type' : 'LDI', 'formBin' : 'I', 'formAsm' : ['IRT', 'IRS', 'IMM'], 'code' : ["assert(%%(arg1)s %s IMM >= 0)" % dirI, "%%(arg0)s = RAM[(%%(arg1)s %s IMM)%s]" % (dirI, addrDiv)]},
+	{'type' : 'FSTI', 'formBin' : 'I', 'formAsm' : ['FRT', 'IRS', 'IMM'], 'code' : ["assert(%%(arg1)s %s IMM >= 0)" % dirI, "RAM[(%%(arg1)s %s IMM)%s] = %%(arg0)s" % (dirI, addrDiv)]},
+	{'type' : 'FLDI', 'formBin' : 'I', 'formAsm' : ['FRT', 'IRS', 'IMM'], 'code' : ["assert(%%(arg1)s %s IMM >= 0)" % dirI, "%%(arg0)s = RAM[(%%(arg1)s %s IMM)%s]" % (dirI, addrDiv)]},
 
 	# TODO バイナリデータも扱えるよう. 3班ではIRD.
 	# 入力・出力ともにテキストデータとして扱う

@@ -6,7 +6,7 @@
 		## opが"SPACIAL"などの文字列だったらそのまま使う
 		op = inst.get("op", "0").strip()
 		op = op if op.isalpha() else name.upper()
-		funct = name.upper() + "_F"
+		funct = name.upper() + "_F" if inst.get("funct") is not None else "0"
 		assert format in "RIJ", "invalid format. formBin must be 'R', 'I' or 'J'"
 		if format == "R":
 			## shaftは使わない
@@ -68,37 +68,11 @@
 				assert False, "formAsm must be IRS, FRS, IRT, FRT, IRD, FRD, IMM, LABEL or FLOAT.(%s)" % e
 		return result
 
-	## TODO
-##	def getArgs(formAsm):
-##		if len(formAsm) == 0:
-##			return ""
-##		args = ['&rs', '&rt', '&rd'][:len(filter(lambda ch: ch in 'RF', formAsm))]
-##		diff = len(formAsm) - len(args)
-##		forward = xmlroot.find(".//instructions").get("forward") != "false"
-##		if diff == 0:
-##			if forward:
-##				args = args[-1:] + args[0:-1]
-##		elif diff == 1:
-##			other = filter(lambda ch: ch in 'ILD', formAsm)
-##			assert len(other) == 1, "len(other) is %d. This must be 1." % len(other)
-##			lastArg = '&imm' if other[0] == 'I' else 'label' if other[0] == 'L' else '&d'
-##			if forward:
-##				args = args[-1:] + args[0:-1] + [lastArg]
-##			else:
-##				args.insert(-1, lastArg)
-##		else:
-##			assert False, "num of 'I' or 'J' must be no more than 1"
-##		assert len(args) >= 1, "len(args) less than 1"
-##		result = ""
-##		for a in args:
-##			result += ", " + a
-##		return result
-
 	mnemonics = xmlroot.find(".//mnemonics")
 %>#include "assembler.h"
 
 % for info in instInfo:
-	% if xmlroot.find(".//" + info["type"]).get("use", "true") != "false":
+	% if isUse(info["type"]):
 ${defineInstruction(info["type"], info["formBin"])}
 	% endif
 % endfor

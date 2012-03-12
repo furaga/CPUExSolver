@@ -60,8 +60,11 @@ type t =
 	| FSub of Id.t * Id.t * Id.t
 	| FMul of Id.t * Id.t * Id.t
 	| FDiv of Id.t * Id.t * Id.t
-	| FSqrt of Id.t * Id.t
+	| FPI of Id.t * Id.t * Id.t
 	| FAbs of Id.t * Id.t
+	| FInv of Id.t * Id.t
+	| FMovI of Id.t * Id.t
+	| IMovF of Id.t * Id.t
 	| Ld of Id.t * Id.t * Id.t
 	| St of Id.t * Id.t * Id.t
 	| Ldi of Id.t * Id.t * int
@@ -170,19 +173,43 @@ let output_stmt oc stmt =
 			| Sub (dst, x, y) -> Printf.fprintf oc "\t${getName("SUB")}\t%s, %s, %s\n" dst x y
 			| Mul (dst, x, y) -> Printf.fprintf oc "\t${getName("MUL")}\t%s, %s, %s\n" dst x y
 			| Div (dst, x, y) -> Printf.fprintf oc "\t${getName("DIV")}\t%s, %s, %s\n" dst x y
+			(* コンパイラでSLLが発行されることは現状ない *)
+% if isUse("SLL"):
 			| SLL (dst, x, y) -> Printf.fprintf oc "\t${getName("SLL")}\t%s, %s, %s\n" dst x y
+% elif isUse("SHIFT"):
+			| SLL (dst, x, y) -> Printf.fprintf oc "\t${getName("SHIFT")}\t%s, %s, %s\n" dst x y
+% else:
+			| SLL (dst, x, y) -> failwith "this architecture must support sll or shift."
+% endif
 			| Addi (dst, x, y) -> Printf.fprintf oc "\t${getName("ADDI")}\t%s, %s, %d\n" dst x y
 			| Subi (dst, x, y) -> Printf.fprintf oc "\t${getName("SUBI")}\t%s, %s, %d\n" dst x y
 			| Muli (dst, x, y) -> Printf.fprintf oc "\t${getName("MULI")}\t%s, %s, %d\n" dst x y
 			| Divi (dst, x, y) -> Printf.fprintf oc "\t${getName("DIVI")}\t%s, %s, %d\n" dst x y
+% if isUse("SLLI"):
 			| SLLi (dst, x, y) -> Printf.fprintf oc "\t${getName("SLLI")}\t%s, %s, %d\n" dst x y
+% elif isUse("SHIFTI"):
+			| SLLi (dst, x, y) -> Printf.fprintf oc "\t${getName("SHIFTI")}\t%s, %s, %d\n" dst x y
+% else:
+			| SLLi (dst, x, y) -> failwith "this architecture must support slli or shifti."
+% endif
+% if isUse("SRAI"):
 			| SRLi (dst, x, y) -> Printf.fprintf oc "\t${getName("SRAI")}\t%s, %s, %d\n" dst x y
+% elif isUse("SHIFTI"):
+			| SRLi (dst, x, y) -> Printf.fprintf oc "\t${getName("SHIFTI")}\t%s, %s, %d\n" dst x (-y)
+% else:
+			| SRLi (dst, x, y) -> failwith "this architecture must support srli or shifti."
+% endif
 			| FAdd (dst, x, y) -> Printf.fprintf oc "\t${getName("FADD")}\t%s, %s, %s\n" dst x y
 			| FSub (dst, x, y) -> Printf.fprintf oc "\t${getName("FSUB")}\t%s, %s, %s\n" dst x y
 			| FMul (dst, x, y) -> Printf.fprintf oc "\t${getName("FMUL")}\t%s, %s, %s\n" dst x y
 			| FDiv (dst, x, y) -> Printf.fprintf oc "\t${getName("FDIV")}\t%s, %s, %s\n" dst x y
-			| FSqrt (dst, src) -> Printf.fprintf oc "\t${getName("FSQRT")}\t%s, %s\n" dst src
+			| FPI (op, dst, src) -> Printf.fprintf oc "\t%s\t%s, %s\n" op dst src
 			| FAbs (dst, src) -> Printf.fprintf oc "\t${getName("FABS")}\t%s, %s\n" dst src
+
+			| FInv (dst, src) -> Printf.fprintf oc "\t${getName("FINV")}\t%s, %s\n" dst src
+			| FMovI (dst, src) -> Printf.fprintf oc "\t${getName("FMOVI")}\t%s, %s\n" dst src
+			| IMovF (dst, src) -> Printf.fprintf oc "\t${getName("IMOVF")}\t%s, %s\n" dst src
+
 % if direction == "toBig":
 			(* 即値バージョンのLd, St系では、大人の事情によりindexの符号が逆になってしまっているので符号を反転させる。 *)
 % endif

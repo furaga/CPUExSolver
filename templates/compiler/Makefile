@@ -51,6 +51,11 @@ $(COMDIR)/sglobal.ml: sglobal.ml.tmpl $(DEPEND)
 $(COMDIR)/float.c: float.c.tmpl $(DEPEND)
 $(COMDIR)/globalEnv.ml: globalEnv.ml.tmpl $(DEPEND)
 $(COMDIR)/parser.mly: parser.mly.tmpl $(DEPEND)
+$(COMDIR)/time.ml: time.ml.tmpl $(DEPEND)
+$(COMDIR)/inline.ml: inline.ml.tmpl $(DEPEND)
+$(COMDIR)/typing.ml: typing.ml.tmpl $(DEPEND)
+$(COMDIR)/closure.ml: closure.ml.tmpl $(DEPEND)
+$(COMDIR)/kNormal.ml: kNormal.ml.tmpl $(DEPEND)
 
 
 clean:

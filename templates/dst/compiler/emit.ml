@@ -15,11 +15,11 @@ let save x =
 (* 退避された変数xのスタックにおける位置を取得 *)
 let get_offset x = 
 	try
-		4 * M.find x !stackmap
+		M.find x !stackmap
 	with Not_found -> failwith ("[Emit.get_offset] " ^ x ^ " is not in stackmap.")
 
 (* スタックサイズを取得 *)
-let get_stacksize () = align ((M.length !stackmap + 1) * 4)
+let get_stacksize () = align (M.length !stackmap + 1)
 
 (* 変数名ないし即値をId.t( = string)型として取得 *)
 let pp_id_or_imm = function
@@ -70,13 +70,8 @@ and g' oc = function
 	| NonTail(_), Nop -> ()
 
 	| NonTail(x), Set(i) ->
-		if i <= -32768 || 32768 < i then (
-			Output.add_stmt (Output.Mvhi (x, (i lsr 16) mod (1 lsl 16)));
-			Output.add_stmt (Output.Mvlo (x, (i mod (1 lsl 16))))
-		)
-		else
-			(* 16ビットで収まるならaddi命令にする *)
-			Output.add_stmt (Output.Addi (x, reg_0, i))
+		Output.add_stmt (Output.Mvhi (x, (i lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (x, (i mod (1 lsl 16))))
 
 	| NonTail(x), SetL(Id.L(y)) ->
 		Output.add_stmt (Output.SetL (x, y))
@@ -98,20 +93,9 @@ and g' oc = function
 				let frac = (frac lsl 3) + (hi lsr 29) in
 				(s lsl 31) + (exp lsl 23) + frac
 			) in
-		Output.add_stmt (Output.Comment (Printf.sprintf "\t! %f" f));
-		if -32768 < b && b <= 32768 then (
-		  	Output.add_stmt (Output.Addi (reg_sw, reg_0, b));
-		  	let ss = get_stacksize () in
-		  	Output.add_stmt (Output.Sti (reg_sw, reg_sp, ss));
-		  	Output.add_stmt (Output.LdFi (x, reg_sp, ss));
-		)
-		else (
-		  	Output.add_stmt (Output.Mvhi (reg_sw, (b lsr 16) mod (1 lsl 16)));
-		  	Output.add_stmt (Output.Mvlo (reg_sw, (b mod (1 lsl 16))));
-		  	let ss = get_stacksize () in
-		  	Output.add_stmt (Output.Sti (reg_sw, reg_sp, ss));
-		  	Output.add_stmt (Output.LdFi (x, reg_sp, ss));
-		)
+		Output.add_stmt (Output.Comment (Printf.sprintf "\t# %f" f));
+		Output.add_stmt (Output.FMvhi (x, (b lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.FMvlo (x, (b mod (1 lsl 16))));
 
 	| NonTail(x), Mov(y) when x = y -> ()
 
@@ -125,19 +109,23 @@ and g' oc = function
 		Output.add_stmt (Output.Add (x, y, z))
 
 	| NonTail(x), Add(y, C(z)) ->
-		Output.add_stmt (Output.Addi (x, y, z))
+		Output.add_stmt (Output.Mvhi (reg_sw, (z lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, z mod (1 lsl 16)));
+		Output.add_stmt (Output.Add (x, y, reg_sw))
 
 	| NonTail(x), Sub(y, V(z)) ->	
 		Output.add_stmt (Output.Sub (x, y, z))
 
 	| NonTail(x), Sub(y, C(z)) ->
-		Output.add_stmt (Output.Subi (x, y, z))
+		Output.add_stmt (Output.Mvhi (reg_sw, (z lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, z mod (1 lsl 16)));
+		Output.add_stmt (Output.Sub (x, y, reg_sw))
 
 	| NonTail(x), Mul(y, V(z)) ->
-		Output.add_stmt (Output.Mul (x, y, z))
+		failwith "This architecture does not support mul."
 
 	| NonTail(x), Mul(y, C(z)) ->
-		Output.add_stmt (Output.Muli (x, y, z))
+		failwith "This architecture does not support muli."
 
 	| NonTail(x), Div(y, V(z)) ->
 		failwith "This architecture does not support div."
@@ -146,7 +134,8 @@ and g' oc = function
 		failwith "This architecture does not support divi."
 
 	| NonTail(x), SLL(y, V(z)) ->
-		Output.add_stmt (Output.SLL (x, y, z))
+		(* 第二引数が変数となるシフト命令は発行されない *)
+		failwith "This compiler should not generate \"SLL(y, V(z))\"."
 
 	| NonTail(x), SLL(y, C(z)) when z >= 0 ->
 		Output.add_stmt (Output.SLLi (x, y, z))
@@ -155,13 +144,15 @@ and g' oc = function
 		Output.add_stmt (Output.SRLi (x, y, -z))
 
 	| NonTail(x), Ld(y, V z) ->
-		Output.add_stmt (Output.Ld (x, y, z))
+		Output.add_stmt (Output.Add (reg_sw, y, z));
+		Output.add_stmt (Output.Ldi (x, reg_sw, 0))
 
 	| NonTail(x), Ld(y, C z) ->
 		Output.add_stmt (Output.Ldi (x, y, z))
 
 	| NonTail(_), St(x, y, V z) ->
-		Output.add_stmt (Output.St (x, y, z))
+		Output.add_stmt (Output.Add (reg_sw, y, z));
+		Output.add_stmt (Output.Sti (x, reg_sw, 0))
 
 	| NonTail(_), St(x, y, C z) ->
 		Output.add_stmt (Output.Sti (x, y, z))
@@ -191,19 +182,19 @@ and g' oc = function
 		Output.add_stmt (Output.FDiv (x, y, z))
 
 	| NonTail(x), LdF(y, V(z)) ->
-		Output.add_stmt (Output.LdF (x, y, z))
+		Output.add_stmt (Output.Add (reg_sw, y, z));
+		Output.add_stmt (Output.LdFi (x, reg_sw, 0))
 
 	| NonTail(x), LdF(y, C(z)) ->
 		Output.add_stmt (Output.LdFi (x, y, z))
-
 	| NonTail(_), StF(x, y, V(z)) ->
-		Output.add_stmt (Output.StF (x, y, z))
+		Output.add_stmt (Output.Add (reg_sw, y, z));
+		Output.add_stmt (Output.StFi (x, reg_sw, 0))
 
 	| NonTail(_), StF(x, y, C(z)) ->
 		Output.add_stmt (Output.StFi (x, y, z))
-
 	| NonTail(_), Comment(s) ->
-		Output.add_stmt (Output.Comment (Printf.sprintf "\t! %s\n" s))
+		Output.add_stmt (Output.Comment (Printf.sprintf "\t# %s\n" s))
 
 	(* 退避の仮想命令 *)
 	| NonTail(_), Save(x, y) when List.mem x (reg_sw :: allregs) && not (M.mem y !stackmap) ->
@@ -256,109 +247,109 @@ and g' oc = function
 
 	(* ラスト２つの引数は順に「ラベル名の接頭辞」「命令名」*)
 	| Tail, IfEq(x, V(y), e1, e2) ->
-		g'_tail_if oc x (pp_id_or_imm (V y)) e2 e1 "jne" "jeq"
+		g'_tail_if oc x (pp_id_or_imm (V y)) e2 e1 "bne" "beq"
 
 	| Tail, IfEq(x, C(0), e1, e2) ->
-		g'_tail_if oc x reg_0 e2 e1 "jne" "jeq"
+		g'_tail_if oc x reg_0 e2 e1 "bne" "beq"
 
 	| Tail, IfEq(x, C(1), e1, e2) ->
-		g'_tail_if oc x reg_p1 e2 e1 "jne" "jeq"
+		g'_tail_if oc x reg_p1 e2 e1 "bne" "beq"
 
 	| Tail, IfEq(x, C(-1), e1, e2) ->
-		g'_tail_if oc x reg_m1 e2 e1 "jne" "jeq"
+		g'_tail_if oc x reg_m1 e2 e1 "bne" "beq"
 
 	| Tail, IfEq(x, C(y), e1, e2) ->
 		failwith "can't use immediate in the branch operations.(IfEq)"
 
 
 	| Tail, IfLE(x, V(y), e1, e2) ->
-		g'_tail_if oc (pp_id_or_imm (V y)) x e1 e2 "jle" "jlt"
+		g'_tail_if oc (pp_id_or_imm (V y)) x e1 e2 "ble" "blt"
 
 	| Tail, IfLE(x, C(0), e1, e2) ->
-		g'_tail_if oc reg_0 x e1 e2 "jle" "jlt"
+		g'_tail_if oc reg_0 x e1 e2 "ble" "blt"
 
 	| Tail, IfLE(x, C(1), e1, e2) ->
-		g'_tail_if oc reg_p1 x e1 e2 "jle" "jlt"
+		g'_tail_if oc reg_p1 x e1 e2 "ble" "blt"
 
 	| Tail, IfLE(x, C(-1), e1, e2) ->
-		g'_tail_if oc reg_m1 x e1 e2 "jle" "jlt"
+		g'_tail_if oc reg_m1 x e1 e2 "ble" "blt"
 
 	| Tail, IfLE(x, C(y), e1, e2) ->
 		failwith "can't use immediate in the branch operations.(IfLE)"
 
 
 	| Tail, IfGE(x, V(y), e1, e2) ->
-		g'_tail_if oc x (pp_id_or_imm (V y)) e1 e2 "jge" "jlt"
+		g'_tail_if oc x (pp_id_or_imm (V y)) e1 e2 "bge" "blt"
 
 	| Tail, IfGE(x, C(0), e1, e2) ->
-		g'_tail_if oc x reg_0 e1 e2 "jge" "jlt"
+		g'_tail_if oc x reg_0 e1 e2 "bge" "blt"
 
 	| Tail, IfGE(x, C(1), e1, e2) ->
-		g'_tail_if oc x reg_p1 e1 e2 "jge" "jlt"
+		g'_tail_if oc x reg_p1 e1 e2 "bge" "blt"
 
 	| Tail, IfGE(x, C(-1), e1, e2) ->
-		g'_tail_if oc x reg_m1 e1 e2 "jge" "jlt"
+		g'_tail_if oc x reg_m1 e1 e2 "bge" "blt"
 
 	| Tail, IfGE(x, C(y), e1, e2) ->
 		failwith "can't use immediate in the branch operations.(IfGE)"
 
 	| Tail, IfFEq(x, y, e1, e2) ->
-		g'_tail_if oc x y e2 e1 "fjne" "fjeq"
+		g'_tail_if oc x y e1 e2 "fbeq" "fbne"
 	| Tail, IfFLE(x, y, e1, e2) ->
-		g'_tail_if oc y x e1 e2 "fjge" "fjlt"
+		g'_tail_if oc y x e1 e2 "fbge" "fblt"
 
 	| NonTail(z), IfEq(x, V(y), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x (pp_id_or_imm (V y)) e2 e1 "jne" "jeq"
+		g'_non_tail_if oc (NonTail(z)) x (pp_id_or_imm (V y)) e2 e1 "bne" "beq"
 
 	| NonTail(z), IfEq(x, C(0), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x reg_0 e2 e1 "jne" "jeq"
+		g'_non_tail_if oc (NonTail(z)) x reg_0 e2 e1 "bne" "beq"
 
 	| NonTail(z), IfEq(x, C(1), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x reg_p1 e2 e1 "jne" "jeq"
+		g'_non_tail_if oc (NonTail(z)) x reg_p1 e2 e1 "bne" "beq"
 
 	| NonTail(z), IfEq(x, C(-1), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x reg_m1 e2 e1 "jne" "jeq"
+		g'_non_tail_if oc (NonTail(z)) x reg_m1 e2 e1 "bne" "beq"
 
 	| NonTail(z), IfEq(x, C(y), e1, e2) ->
 		failwith "can't use immediate in the branch operations.(IfEq)"
 
 
 	| NonTail(z), IfLE(x, V(y), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) (pp_id_or_imm (V y)) x e1 e2 "jle" "jlt"
+		g'_non_tail_if oc (NonTail(z)) (pp_id_or_imm (V y)) x e1 e2 "ble" "blt"
 
 	| NonTail(z), IfLE(x, C(0), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) reg_0 x e1 e2 "jle" "jlt"
+		g'_non_tail_if oc (NonTail(z)) reg_0 x e1 e2 "ble" "blt"
 
 	| NonTail(z), IfLE(x, C(1), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) reg_p1 x e1 e2 "jle" "jlt"
+		g'_non_tail_if oc (NonTail(z)) reg_p1 x e1 e2 "ble" "blt"
 
 	| NonTail(z), IfLE(x, C(-1), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) reg_m1 x e1 e2 "jle" "jlt"
+		g'_non_tail_if oc (NonTail(z)) reg_m1 x e1 e2 "ble" "blt"
 
 	| NonTail(z), IfLE(x, C(y), e1, e2) ->
 		failwith "can't use immediate in the branch operations.(IfLE)"
 
 
 	| NonTail(z), IfGE(x, V(y), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x (pp_id_or_imm (V y)) e1 e2 "jge" "jlt"
+		g'_non_tail_if oc (NonTail(z)) x (pp_id_or_imm (V y)) e1 e2 "bge" "blt"
 
 	| NonTail(z), IfGE(x, C(0), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x reg_0 e1 e2 "jge" "jlt"
+		g'_non_tail_if oc (NonTail(z)) x reg_0 e1 e2 "bge" "blt"
 
 	| NonTail(z), IfGE(x, C(1), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x reg_p1 e1 e2 "jge" "jlt"
+		g'_non_tail_if oc (NonTail(z)) x reg_p1 e1 e2 "bge" "blt"
 
 	| NonTail(z), IfGE(x, C(-1), e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x reg_m1 e1 e2 "jge" "jlt"
+		g'_non_tail_if oc (NonTail(z)) x reg_m1 e1 e2 "bge" "blt"
 
 	| NonTail(z), IfGE(x, C(y), e1, e2) ->
 		failwith "can't use immediate in the branch operations.(IfGE)"
 
 
 	| NonTail(z), IfFEq(x, y, e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) x y e2 e1 "fjne" "fjeq"
+		g'_non_tail_if oc (NonTail(z)) x y e1 e2 "fbeq" "fbne"
 	| NonTail(z), IfFLE(x, y, e1, e2) ->
-		g'_non_tail_if oc (NonTail(z)) y x e1 e2 "fjge" "fjlt"
+		g'_non_tail_if oc (NonTail(z)) y x e1 e2 "fbge" "fblt"
 
 
 	(* 関数呼び出しの仮想命令の実装 (caml2html: emit_call) *)
@@ -372,16 +363,15 @@ and g' oc = function
 
 	| Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
 		(match x with
-	  		| "min_caml_fabs" 
-	  		| "min_caml_abs_float" ->
-				Output.add_stmt (Output.FAbs (fregs.(0), (assert (List.length zs > 0); List.hd zs)));
-				Output.add_stmt Output.Return
-	  		| "min_caml_sqrt" ->
-				Output.add_stmt (Output.FSqrt (fregs.(0), (assert (List.length zs > 0); List.hd zs)));
+	  		| "min_caml_sqrt"
+			->
+				Output.add_stmt (Output.FPI ("fsqrt", fregs.(0), (assert (List.length zs > 0); List.hd zs)));
 				Output.add_stmt Output.Return
 		  	| "min_caml_print_newline" ->
 				g'_args oc x [] ys zs;
-				Output.add_stmt (Output.Addi (regs.(0), reg_0, 10));
+				Output.add_stmt (Output.Mvhi (reg_sw, 0));
+				Output.add_stmt (Output.Mvlo (reg_sw, 10));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
 				Output.add_stmt (Output.Output regs.(0));
 				Output.add_stmt Output.Return
 		  	| "min_caml_print_char"
@@ -400,10 +390,15 @@ and g' oc = function
   | NonTail(a), CallCls(x, ys, zs) -> (* レジスタで飛ぶジャンプ *)
 		g'_args oc x [(x, reg_cl)] ys zs;
 		let ss = get_stacksize () in
+		
+		Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+		Output.add_stmt (Output.Sub (reg_sp, reg_sp, reg_sw));
 		Output.add_stmt (Output.Ldi (reg_sw, reg_cl, 0));
-		Output.add_stmt (Output.Subi (reg_sp, reg_sp, ss));
 		Output.add_stmt (Output.CallR reg_sw);
-		Output.add_stmt (Output.Addi (reg_sp, reg_sp, ss)); 
+		Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+		Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+		Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw)); 
 		(if List.mem a allregs && a <> regs.(0) then
 			Output.add_stmt (Output.Mov (a, regs.(0)))
 		else if List.mem a allfregs && a <> fregs.(0) then
@@ -412,15 +407,15 @@ and g' oc = function
 
   | NonTail(a), CallDir(Id.L(x), ys, zs) -> (* ラベルで飛ぶジャンプ *)
 	  	(match x with
-	  		| "min_caml_fabs" 
-	  		| "min_caml_abs_float" ->
-				Output.add_stmt (Output.FAbs (a, (assert (List.length zs > 0); List.hd zs)))
-	  		| "min_caml_sqrt" ->
-				Output.add_stmt (Output.FSqrt (a, (assert (List.length zs > 0); List.hd zs)))
+	  		| "min_caml_sqrt"
+			->
+				Output.add_stmt (Output.FPI ("fsqrt", a, (assert (List.length zs > 0); List.hd zs)))
 		  	| "min_caml_print_newline" ->
 				let ss = get_stacksize () in
 				Output.add_stmt (Output.Sti (regs.(0), reg_sp, ss));
-				Output.add_stmt (Output.Addi (regs.(0), reg_0, 10));
+				Output.add_stmt (Output.Mvhi (reg_sw, 0));
+				Output.add_stmt (Output.Mvlo (reg_sw, 10));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
 				Output.add_stmt (Output.Output regs.(0));
 				Output.add_stmt (Output.Ldi (regs.(0), reg_sp, ss))
 		  	| "min_caml_print_char"
@@ -432,9 +427,13 @@ and g' oc = function
 			| _ ->
 				g'_args oc x [] ys zs;
 				let ss = get_stacksize () in
-				Output.add_stmt (Output.Subi (reg_sp, reg_sp, ss));
+				Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+				Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+				Output.add_stmt (Output.Sub (reg_sp, reg_sp, reg_sw));
 				Output.add_stmt (Output.Call x);
-				Output.add_stmt (Output.Addi (reg_sp, reg_sp, ss)); 
+				Output.add_stmt (Output.Mvhi (reg_sw, (ss lsr 16) mod (1 lsl 16)));
+				Output.add_stmt (Output.Mvlo (reg_sw, ss mod (1 lsl 16)));
+				Output.add_stmt (Output.Add (reg_sp, reg_sp, reg_sw));
 				if List.mem a allregs && a <> regs.(0) then
 					Output.add_stmt (Output.Mov (a, regs.(0)))
 				else if List.mem a allfregs && a <> fregs.(0) then
@@ -475,7 +474,7 @@ and g'_args oc name x_reg_cl ys zs =
 			let (reg_ls, freg_ls) = List.partition (fun x -> List.mem x Asm.allregs) arg_regs in
 			(Array.of_list reg_ls, Array.of_list freg_ls)
 		with
-		| Not_found -> print_endline ("not found args: " ^ name); (Asm.regs, Asm.fregs) in
+		| Not_found -> (Asm.regs, Asm.fregs) in
 	let (i, yrs) =
 		List.fold_left (
 			fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs)
@@ -500,38 +499,39 @@ let print_list ls =
 	"[" ^ (print_list ls) ^ "]"
 
 let h oc { name = Id.L(x); args = args; fargs = fargs; body = e; ret = ret } =
-	Output.add_stmt (Output.Comment (Printf.sprintf "\n!---------------------------------------------------------------------"));
-	Output.add_stmt (Output.Comment (Printf.sprintf "! args = %s" (print_list args)));
-	Output.add_stmt (Output.Comment (Printf.sprintf "! fargs = %s" (print_list fargs)));
+	Output.add_stmt (Output.Comment (Printf.sprintf "\n#---------------------------------------------------------------------"));
+	Output.add_stmt (Output.Comment (Printf.sprintf "# args = %s" (print_list args)));
+	Output.add_stmt (Output.Comment (Printf.sprintf "# fargs = %s" (print_list fargs)));
 	(* TODO: 文字数が多くなるとアセンブリで読み込めなくなる *)
-(*	Output.add_stmt (Output.Comment (Printf.sprintf "! use_regs = %s" (print_list (S.fold (fun x env -> x :: env) (Asm.get_use_regs x) []))));
-*)	Output.add_stmt (Output.Comment (Printf.sprintf "! ret type = %s" (Type.string_of_type ret)));
-	Output.add_stmt (Output.Comment (Printf.sprintf "!---------------------------------------------------------------------"));
+(*	Output.add_stmt (Output.Comment (Printf.sprintf "# use_regs = %s" (print_list (S.fold (fun x env -> x :: env) (Asm.get_use_regs x) []))));
+*)	Output.add_stmt (Output.Comment (Printf.sprintf "# ret type = %s" (Type.string_of_type ret)));
+	Output.add_stmt (Output.Comment (Printf.sprintf "#---------------------------------------------------------------------"));
 	Output.add_stmt (Output.Label x);
 	(*  Printf.printf "%s\n" x; flush stdout;*)
 	stackmap := M.empty;
 	g oc (Tail, e)
 
 let f oc (Prog(fundefs, e)) =
-	Format.eprintf "generating assembly...@.";
+	Format.eprintf "start generating assembly.@.";
 
-	Output.add_stmt (Output.Comment (Printf.sprintf ".init_heap_size\t0"));
 	Output.add_stmt (Output.Jmp "min_caml_start");
 	Output.add_stmt (Output.Label "min_caml_start");
 	stackmap := M.empty;
 
 	(* reg_hp, reg_p1, reg_m1の初期化 *)
-	(* + 4してるのはヒープレジスタの退避用 *)
-	let pos = !GlobalEnv.offset + 4 in
+	(* + 1してるのはヒープレジスタの退避用 *)
+	let pos = !GlobalEnv.offset + 1 in
 	Output.add_stmt (Output.Mvhi (reg_hp, (pos lsr 16) mod (1 lsl 16)));
 	Output.add_stmt (Output.Mvlo (reg_hp, pos mod (1 lsl 16)));
-	Output.add_stmt (Output.Addi (reg_p1, reg_0, 1));
+	Output.add_stmt (Output.Mvhi (reg_p1, 0));
+	Output.add_stmt (Output.Mvlo (reg_p1, 1));
 	Output.add_stmt (Output.Sub (reg_m1, reg_0, reg_p1));
 	g oc (NonTail reg_0, e);
 	Output.add_stmt Output.Halt;
 
 	List.iter (fun fundef -> h oc fundef) fundefs;
 
-	Output.optimize ();
-	Output.output oc
+	Output.output oc;
+	
+	Format.eprintf "finished generating assembly. compile done.@."
 

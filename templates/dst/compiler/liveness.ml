@@ -38,12 +38,13 @@ let reverse_topological_sort blks =
 		next := [];
 		List.iter (
 			fun x ->
-				if S.is_empty x.t_succs then
-					(List.iter (
+				if S.is_empty x.t_succs then (
+					List.iter (
 						fun y ->
 							y.t_succs <- S.remove x.t_id y.t_succs
 					) !ords;
-					res := x.t_id :: !res)
+					res := x.t_id :: !res
+				)
 				else
 					next := x :: !next
 		) !ords;

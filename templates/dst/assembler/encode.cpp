@@ -1,45 +1,38 @@
 #include "assembler.h"
 
-DEFINE_R(_add, SPECIAL, 0, ADD_F);
-DEFINE_R(_sub, SPECIAL, 0, SUB_F);
-DEFINE_R(_mul, SPECIAL, 0, MUL_F);
-DEFINE_R(_sll, SPECIAL, 0, SLL_F);
-DEFINE_I(_addi, ADDI);
-DEFINE_I(_subi, SUBI);
-DEFINE_I(_muli, MULI);
+DEFINE_R(_add, ALU, 0, ADD_F);
+DEFINE_R(_sub, ALU, 0, SUB_F);
 DEFINE_I(_slli, SLLI);
-DEFINE_I(_srli, SRLI);
-DEFINE_R(_fadd, FPI, 0, FADD_F);
-DEFINE_R(_fsub, FPI, 0, FSUB_F);
-DEFINE_R(_fmul, FPI, 0, FMUL_F);
-DEFINE_R(_fdiv, FPI, 0, FDIV_F);
-DEFINE_R(_fsqrt, FPI, 0, FSQRT_F);
-DEFINE_R(_fabs, FPI, 0, FABS_F);
-DEFINE_R(_fmov, FPI, 0, FMOV_F);
-DEFINE_R(_fneg, FPI, 0, FNEG_F);
+DEFINE_I(_srai, SRAI);
+DEFINE_R(_fadd, FPU, 0, FADD_F);
+DEFINE_R(_fsub, FPU, 0, FSUB_F);
+DEFINE_R(_fmul, FPU, 0, FMUL_F);
+DEFINE_R(_fdiv, FPU, 0, FDIV_F);
+DEFINE_R(_fsqrt, FPU, 0, FSQRT_F);
+DEFINE_R(_fmov, Move, 0, FMOV_F);
+DEFINE_R(_fneg, FPU, 0, FNEG_F);
 DEFINE_I(_mvlo, MVLO);
 DEFINE_I(_mvhi, MVHI);
-DEFINE_J(_jmp, JMP);
-DEFINE_I(_jeq, JEQ);
-DEFINE_I(_jne, JNE);
-DEFINE_I(_jlt, JLT);
-DEFINE_I(_fjeq, FJEQ);
-DEFINE_I(_fjlt, FJLT);
-DEFINE_R(_b, SPECIAL, 0, B_F);
+DEFINE_I(_fmvlo, FMVLO);
+DEFINE_I(_fmvhi, FMVHI);
+DEFINE_J(_j, J);
+DEFINE_I(_beq, BEQ);
+DEFINE_I(_blt, BLT);
+DEFINE_I(_fbne, FBNE);
+DEFINE_I(_fblt, FBLT);
+DEFINE_R(_jr, JR, 0, 0);
+DEFINE_J(_jal, JAL);
+DEFINE_R(_jalr, JALR, 0, 0);
 DEFINE_J(_call, CALL);
-DEFINE_R(_callR, SPECIAL, 0, CALLR_F);
-DEFINE_R(_return, RETURN, 0, RETURN_F);
-DEFINE_R(_st, ST, 0, ST_F);
-DEFINE_R(_ld, LD, 0, LD_F);
-DEFINE_R(_fst, SPECIAL, 0, FST_F);
-DEFINE_R(_fld, SPECIAL, 0, FLD_F);
+DEFINE_R(_callr, CALLR, 0, 0);
+DEFINE_R(_return, RETURN, 0, 0);
 DEFINE_I(_sti, STI);
 DEFINE_I(_ldi, LDI);
 DEFINE_I(_fsti, FSTI);
 DEFINE_I(_fldi, FLDI);
-DEFINE_R(_input, IO, 0, INPUT_F);
-DEFINE_R(_output, IO, 0, OUTPUT_F);
-DEFINE_R(_halt, SPECIAL, 0, HALT_F);
+DEFINE_R(_input, System, 0, INPUT_F);
+DEFINE_R(_output, System, 0, OUTPUT_F);
+DEFINE_R(_halt, System, 0, HALT_F);
 
 typedef union
 {
@@ -97,51 +90,6 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			return true;
 		}
 	}
-	if (eq(instName, "mul"))
-	{
-		int n = sscanf(buffer, formRRR, dummy, &rd, &rs, &rt);
-		if (n == 4)
-		{
-			code = _mul(rs, rt, rd);
-			return true;
-		}
-	}
-	if (eq(instName, "sll"))
-	{
-		int n = sscanf(buffer, formRRR, dummy, &rd, &rs, &rt);
-		if (n == 4)
-		{
-			code = _sll(rs, rt, rd);
-			return true;
-		}
-	}
-	if (eq(instName, "addi"))
-	{
-		int n = sscanf(buffer, formRRI, dummy, &rt, &rs, &imm);
-		if (n == 4)
-		{
-			code = _addi(rs, rt, imm);
-			return true;
-		}
-	}
-	if (eq(instName, "subi"))
-	{
-		int n = sscanf(buffer, formRRI, dummy, &rt, &rs, &imm);
-		if (n == 4)
-		{
-			code = _subi(rs, rt, imm);
-			return true;
-		}
-	}
-	if (eq(instName, "muli"))
-	{
-		int n = sscanf(buffer, formRRI, dummy, &rt, &rs, &imm);
-		if (n == 4)
-		{
-			code = _muli(rs, rt, imm);
-			return true;
-		}
-	}
 	if (eq(instName, "slli"))
 	{
 		int n = sscanf(buffer, formRRI, dummy, &rt, &rs, &imm);
@@ -151,12 +99,12 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			return true;
 		}
 	}
-	if (eq(instName, "srli"))
+	if (eq(instName, "srai"))
 	{
 		int n = sscanf(buffer, formRRI, dummy, &rt, &rs, &imm);
 		if (n == 4)
 		{
-			code = _srli(rs, rt, imm);
+			code = _srai(rs, rt, imm);
 			return true;
 		}
 	}
@@ -198,25 +146,16 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 	}
 	if (eq(instName, "fsqrt"))
 	{
-		int n = sscanf(buffer, formFF, dummy, &rd, &rs);
+		int n = sscanf(buffer, formFF, dummy, &rt, &rs);
 		if (n == 3)
 		{
 			code = _fsqrt(rs, rt, rd);
 			return true;
 		}
 	}
-	if (eq(instName, "fabs"))
-	{
-		int n = sscanf(buffer, formFF, dummy, &rd, &rs);
-		if (n == 3)
-		{
-			code = _fabs(rs, rt, rd);
-			return true;
-		}
-	}
 	if (eq(instName, "fmov"))
 	{
-		int n = sscanf(buffer, formFF, dummy, &rd, &rs);
+		int n = sscanf(buffer, formFF, dummy, &rt, &rs);
 		if (n == 3)
 		{
 			code = _fmov(rs, rt, rd);
@@ -225,7 +164,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 	}
 	if (eq(instName, "fneg"))
 	{
-		int n = sscanf(buffer, formFF, dummy, &rd, &rs);
+		int n = sscanf(buffer, formFF, dummy, &rt, &rs);
 		if (n == 3)
 		{
 			code = _fneg(rs, rt, rd);
@@ -250,7 +189,25 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			return true;
 		}
 	}
-	if (eq(instName, "jmp"))
+	if (eq(instName, "fmvlo"))
+	{
+		int n = sscanf(buffer, formFI, dummy, &rs, &imm);
+		if (n == 3)
+		{
+			code = _fmvlo(rs, rt, imm);
+			return true;
+		}
+	}
+	if (eq(instName, "fmvhi"))
+	{
+		int n = sscanf(buffer, formFI, dummy, &rs, &imm);
+		if (n == 3)
+		{
+			code = _fmvhi(rs, rt, imm);
+			return true;
+		}
+	}
+	if (eq(instName, "j"))
 	{
 		int n = sscanf(buffer, formL, dummy, label);
 		if (n == 2)
@@ -258,11 +215,11 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
-			code = _jmp(0);
+			code = _j(0);
 			return true;
 		}
 	}
-	if (eq(instName, "jeq"))
+	if (eq(instName, "beq"))
 	{
 		int n = sscanf(buffer, formRRL, dummy, &rs, &rt, label);
 		if (n == 4)
@@ -270,11 +227,11 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
-			code = _jeq(rs, rt, imm);
+			code = _beq(rs, rt, imm);
 			return true;
 		}
 	}
-	if (eq(instName, "jne"))
+	if (eq(instName, "blt"))
 	{
 		int n = sscanf(buffer, formRRL, dummy, &rs, &rt, label);
 		if (n == 4)
@@ -282,23 +239,11 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
-			code = _jne(rs, rt, imm);
+			code = _blt(rs, rt, imm);
 			return true;
 		}
 	}
-	if (eq(instName, "jlt"))
-	{
-		int n = sscanf(buffer, formRRL, dummy, &rs, &rt, label);
-		if (n == 4)
-		{
-			labelNames[currentLine] = string(label);
-//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
-			useLabel = true;
-			code = _jlt(rs, rt, imm);
-			return true;
-		}
-	}
-	if (eq(instName, "fjeq"))
+	if (eq(instName, "fbne"))
 	{
 		int n = sscanf(buffer, formFFL, dummy, &rs, &rt, label);
 		if (n == 4)
@@ -306,11 +251,11 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
-			code = _fjeq(rs, rt, imm);
+			code = _fbne(rs, rt, imm);
 			return true;
 		}
 	}
-	if (eq(instName, "fjlt"))
+	if (eq(instName, "fblt"))
 	{
 		int n = sscanf(buffer, formFFL, dummy, &rs, &rt, label);
 		if (n == 4)
@@ -318,16 +263,37 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
 			useLabel = true;
-			code = _fjlt(rs, rt, imm);
+			code = _fblt(rs, rt, imm);
 			return true;
 		}
 	}
-	if (eq(instName, "b"))
+	if (eq(instName, "jr"))
 	{
 		int n = sscanf(buffer, formR, dummy, &rs);
 		if (n == 2)
 		{
-			code = _b(rs, rt, rd);
+			code = _jr(rs, rt, rd);
+			return true;
+		}
+	}
+	if (eq(instName, "jal"))
+	{
+		int n = sscanf(buffer, formL, dummy, label);
+		if (n == 2)
+		{
+			labelNames[currentLine] = string(label);
+//			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
+			useLabel = true;
+			code = _jal(0);
+			return true;
+		}
+	}
+	if (eq(instName, "jalr"))
+	{
+		int n = sscanf(buffer, formR, dummy, &rs);
+		if (n == 2)
+		{
+			code = _jalr(rs, rt, rd);
 			return true;
 		}
 	}
@@ -343,12 +309,12 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 			return true;
 		}
 	}
-	if (eq(instName, "callR"))
+	if (eq(instName, "callr"))
 	{
 		int n = sscanf(buffer, formR, dummy, &rs);
 		if (n == 2)
 		{
-			code = _callR(rs, rt, rd);
+			code = _callr(rs, rt, rd);
 			return true;
 		}
 	}
@@ -358,42 +324,6 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 		if (n == 1)
 		{
 			code = _return(rs, rt, rd);
-			return true;
-		}
-	}
-	if (eq(instName, "st"))
-	{
-		int n = sscanf(buffer, formRRR, dummy, &rd, &rs, &rt);
-		if (n == 4)
-		{
-			code = _st(rs, rt, rd);
-			return true;
-		}
-	}
-	if (eq(instName, "ld"))
-	{
-		int n = sscanf(buffer, formRRR, dummy, &rd, &rs, &rt);
-		if (n == 4)
-		{
-			code = _ld(rs, rt, rd);
-			return true;
-		}
-	}
-	if (eq(instName, "fst"))
-	{
-		int n = sscanf(buffer, formFRR, dummy, &rd, &rs, &rt);
-		if (n == 4)
-		{
-			code = _fst(rs, rt, rd);
-			return true;
-		}
-	}
-	if (eq(instName, "fld"))
-	{
-		int n = sscanf(buffer, formFRR, dummy, &rd, &rs, &rt);
-		if (n == 4)
-		{
-			code = _fld(rs, rt, rd);
 			return true;
 		}
 	}
@@ -435,7 +365,7 @@ bool encode(char* instName, char* buffer, map<uint32_t, string>& labelNames, uin
 	}
 	if (eq(instName, "input"))
 	{
-		int n = sscanf(buffer, formR, dummy, &rd);
+		int n = sscanf(buffer, formR, dummy, &rs);
 		if (n == 2)
 		{
 			code = _input(rs, rt, rd);
@@ -485,7 +415,7 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], form, dummy) == 1)
 		{
-			sprintf(mnemonicBuffer[0], "add\t%%g0, %%g0, %%g0");
+			sprintf(mnemonicBuffer[0], "add\t＄r0, ＄r0, ＄r0");
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -494,7 +424,16 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
 		{
-			sprintf(mnemonicBuffer[0], "addi\t%%g%d, %%g%d, 0", rt, rs);
+			sprintf(mnemonicBuffer[0], "add\t＄r%d, ＄r%d, ＄r0", rt, rs);
+			useLabels.push_back(false);
+		}
+		return	useLabels;
+	}
+	if (eq(instName, "not"))
+	{
+		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
+		{
+			sprintf(mnemonicBuffer[0], "nor\t＄r%d, ＄r%d, ＄r0", rt, rs, rs);
 			useLabels.push_back(false);
 		}
 		return	useLabels;
@@ -503,19 +442,30 @@ vector<bool> mnemonic(char* instName, char mnemonicBuffer[][MAX_LINE_SIZE], map<
 	{
 		if (sscanf(mnemonicBuffer[0], formRR, dummy, &rt, &rs) == 3)
 		{
-			sprintf(mnemonicBuffer[0], "sub\t%%g%d, %%g0, %%g%d", rt, rs);
+			sprintf(mnemonicBuffer[0], "sub\t＄r%d, ＄r0, ＄r%d", rt, rs);
 			useLabels.push_back(false);
 		}
 		return	useLabels;
 	}
-	if (eq(instName, "setL"))
+	if (eq(instName, "setl"))
 	{
 		if (sscanf(mnemonicBuffer[0], formRL, dummy, &rs, label) == 3)
 		{
 			labelNames[currentLine] = string(label);
 //			cerr << "assigned (" << currentLine << ", " << string(label) << ") in labelNames" << endl;
-			sprintf(mnemonicBuffer[0], "addi\t%%g%d, %%g0, 0", rs);
+			sprintf(mnemonicBuffer[0], "addi\t＄r%d, ＄r0, 0", rs);
 			useLabels.push_back(true);
+		}
+		return	useLabels;
+	}
+	if (eq(instName, "fliw"))
+	{
+		if (sscanf(mnemonicBuffer[0], formFD, dummy, &rs, &d) == 3)
+		{
+			sprintf(mnemonicBuffer[0], "fmvlo\t＄f%d, %d", rs, gethi(d));
+			useLabels.push_back(false);
+			sprintf(mnemonicBuffer[1], "fmvhi\t＄f%d, %d", rs, getlo(d));
+			useLabels.push_back(false);
 		}
 		return	useLabels;
 	}

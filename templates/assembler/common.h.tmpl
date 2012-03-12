@@ -2,6 +2,28 @@
 	romSize = xmlroot.find(".//RAM").get("size")
 	intRegNum = xmlroot.find(".//intRegs").get("num")
 	floatRegNum = xmlroot.find(".//floatRegs").get("num")
+
+	def getInst(type):
+		inst = xmlroot.find(".//" + type)
+		assert inst is not None, "inst is None(" + type + ")"
+		return inst
+	
+	def getName(type):
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+	
+	def getOp(type):
+		op = getInst(type).get("op")
+		op is not None, "op is None(" + type + ")"
+		return op
+			
+	def getFunct(type):
+		return getInst(type).get("funct")
+
+	def isUse(type):
+		use = getInst(type).get("use", "true")
+		return use != "false"
 %>#ifndef _COMMON_H
 #define _COMMON_H
 
@@ -29,15 +51,13 @@
 % for constNum in xmlroot.find(".//CONST"):
 #define ${constNum.tag} (${constNum.get("value")})
 % endfor
-% for inst in xmlroot.find(".//instructions"):
-	% if not(inst.get("name") is None):
-		% if inst.get("use") != "false":
-			% if inst.get("op", "0").strip().isdigit():
-#define ${inst.get("name").upper()} (${inst.get("op", "0").strip()})
-			% endif
-			% if inst.get("funct", "0").isdigit():
-#define ${inst.get("name").upper() + "_F"} (${inst.get("funct", "0").strip()})
-			% endif
+% for inst in instInfo:
+	% if isUse(inst["type"]):
+		% if not getOp(inst["type"]).isalpha():
+#define ${getName(inst["type"]).upper()} (${getOp(inst["type"])})
+		% endif
+		% if (getFunct(inst["type"]) is not None) and (not getFunct(inst["type"]).isalpha()):
+#define ${getName(inst["type"]).upper()}_F (${getFunct(inst["type"])})
 		% endif
 	% endif
 % endfor

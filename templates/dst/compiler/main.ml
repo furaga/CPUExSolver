@@ -3,7 +3,7 @@ let print_flg = ref false
 
 (*  [Movelet.f; ConstArg.f; ConstFold.f; Cse.f; ConstArray.f; Inline.f; Assoc.f; BetaTuple.f; Beta.f] *)
 let rec iter n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
-  Format.eprintf "iteration %d@." n;
+  Format.eprintf "iteration(%d/%d)@." (!limit - n) !limit;
   if n = 0 then e else
   let e' =
 	Elim.f (
@@ -41,23 +41,22 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルへ
 
 (*ignore (Coloring.f (Block.f simm));*)
 	if !Closure.exist_cls then
-		(Printf.eprintf "Not Coloring\n";
-		(* RegAlloc3はクロージャが作られたときにバグるのでRegAllocで代用 *)
+		((* RegAlloc3はクロージャが作られたときにバグるのでRegAllocで代用 *)
 		Emit.f outchan 	(RegAlloc.f simm))
 	else
-		(Printf.eprintf "Coloring\n";
-		Emit.f outchan 	(RegAllocWithColoring.f (Block.f simm)))
+		(Emit.f outchan (RegAllocWithColoring.f (Block.f simm)))
 	
 let string s = lexbuf stdout (Lexing.from_string s) (* 文字列をコンパイルして標準出力に表示する (caml2html: main_string) *)
 
 let file f = (* ファイルをコンパイルしてファイルに出力する (caml2html: main_file) *)
-  let inchan = open_in (f ^ ".ml") in
-  let outchan = open_out (f ^ ".s") in
-  try
-    lexbuf outchan (Lexing.from_channel inchan);
-    close_in inchan;
-    close_out outchan;
-  with e -> (close_in inchan; close_out outchan; raise e)
+	let inchan = open_in (f ^ ".ml") in
+	let outchan = open_out (f ^ ".s") in
+	try
+		Format.eprintf "<compile>@.";
+		lexbuf outchan (Lexing.from_channel inchan);
+		close_in inchan;
+		close_out outchan
+	with e -> (close_in inchan; close_out outchan; raise e)
 
 let () = (* ここからコンパイラの実行が開始される (caml2html: main_entry) *)
   let files = ref [] in

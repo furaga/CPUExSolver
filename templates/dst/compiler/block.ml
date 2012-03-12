@@ -1,6 +1,6 @@
 open Asm
 
-let debug = true
+let debug = false 
 
 type t =
 	| Nop of (Id.t * Type.t)
@@ -491,7 +491,7 @@ and g' (f : fundef) (blk : block) xt = function
 	| Asm.Comment _ -> blk
 
 let make_fundef {Asm.name = Id.L x; Asm.args = ys; Asm.fargs = zs; Asm.body = e; Asm.ret = t} = 
-	Printf.eprintf "<%s>\n" x;
+	if debug then Printf.eprintf "<%s>\n" x;
 	let blk = make_block (gen_block_id ()) [] [] in
 	let f = {
 		fName = Id.L x;
@@ -503,7 +503,7 @@ let make_fundef {Asm.name = Id.L x; Asm.args = ys; Asm.fargs = zs; Asm.body = e;
 		fDef_regs = []
 	} in
 	let ret_reg =
-		try (M.find x !fundata).ret_reg with Not_found -> "%g0" in
+		try (M.find x !fundata).ret_reg with Not_found -> "＄r0" in
 	g f blk (ret_reg, t) e;
 	f
 
@@ -513,11 +513,11 @@ let h fundef =
 	fundef
 	
 let f (Asm.Prog(fundefs, e) as prog) = 
-	Printf.eprintf "START make Blocks\n";
+	if debug then Printf.eprintf "START make Blocks\n";
 (*	Asm.print_prog 0 prog; flush stdout;*)
 	let ans = Prog (List.map h fundefs, h {name = Id.L "min_caml_start"; args = []; fargs = []; body = e; ret = Type.Unit}) in
 (*	print_prog 0 ans; flush stdout;*)
-	Printf.eprintf "END make Blocks\n";
+	if debug then Printf.eprintf "END make Blocks\n";
 	ans
 	
 

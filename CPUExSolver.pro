@@ -17,23 +17,29 @@ SOURCES += main.cpp\
     file.cpp \
     projectview.cpp \
     help.cpp \
-    linker.cpp \
     run.cpp \
     finddialog.cpp \
     configdialog.cpp \
-    config.cpp
+    config.cpp \
+    solver.cpp \
+    solverdialog.cpp \
+    generatingdialog.cpp
 
 HEADERS  += mainwindow.h \
     global.h \
     aboutdialog.h \
     linker.h \
     finddialog.h \
-    configdialog.h
+    configdialog.h \
+    solverdialog.h \
+    generatingdialog.h
 
 FORMS    += mainwindow.ui \
     aboutdialog.ui \
     finddialog.ui \
-    configdialog.ui
+    configdialog.ui \
+    solverdialog.ui \
+    generatingdialog.ui
 
 RESOURCES += \
     resources.qrc

@@ -124,7 +124,7 @@ exp:
     	if is_log2_exp $3 then
     		get_syntax (sll_of_mul $1 $3)
     	else
-    		get_syntax (Mul($1, $3))
+		    get_syntax (App (get_syntax (Var "mul"), [$1; $3]))
     }
 | exp SLASH exp
     {

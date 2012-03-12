@@ -106,7 +106,9 @@ class linker
 		}
 		catch (IOException e)
 		{
+			// 例外を検出したらエラー終了する。Makefileが止まる
 			System.out.println(e);
+			System.exit(1);
 		}
 	}
 }

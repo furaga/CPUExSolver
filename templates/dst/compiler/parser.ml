@@ -661,7 +661,7 @@ let yyact = [|
     	if is_log2_exp _3 then
     		get_syntax (sll_of_mul _1 _3)
     	else
-    		get_syntax (Mul(_1, _3))
+		    get_syntax (App (get_syntax (Var "mul"), [_1; _3]))
     )
 # 667 "parser.ml"
                : Syntax.t))

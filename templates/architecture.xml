@@ -40,6 +40,7 @@
 		<SLA use="false" name="sla" op="SPECIAL" funct="6" explain="算術左シフト"/>
 		<SRL use="false" name="srll" op="SPECIAL" funct="7" explain="論理右シフト"/>
 		<SRA name="srl" op="SPECIAL" funct="8" explain="算術右シフト"/>
+		<SHIFT use="false" name="shiftr" op="ALU" funct="8" explain="算術右シフト（符号に応じて右・左が変わる）"/>
 		<AND use="false" name="and" op="SPECIAL" funct="9" explain="論理積"/>
 		<OR use="false" name="or" op="SPECIAL" funct="10" explain="論理和"/>
 		<NOR use="false" name="nor" op="SPECIAL" funct="50" explain="論理和"/>
@@ -54,6 +55,7 @@
 		<SLLI name="slli" op="7" explain="論理左シフト(即値)"/>
 		<SLAI use="false" name="slai" op="8" explain="算術左シフト(即値)"/>
 		<SRLI use="false" name="srlli" op="9" explain="論理右シフト(即値)"/>
+		<SHIFTI use="false" name="shift" op="0x3D" explain="算術シフト（符号に応じて右・左が変わる）"/>
 		<SRAI name="srli" op="10" explain="算術右シフト(即値)"/>
 		<ANDI use="false" name="andi" op="11" explain="論理積(即値)"/>
 		<ORI use="false" name="ori" op="12" explain="論理和(即値)"/>
@@ -64,6 +66,8 @@
 		<FADD name="fadd" op="FPI" funct="0" explain="浮動小数点数同士の足し算"/>
 		<FSUB name="fsub" op="FPI" funct="1" explain="浮動小数点数同士の引き算"/>
 		<FMUL name="fmul" op="FPI" funct="2" explain="浮動小数点数同士の掛け算"/>
+		<FMULN use="false" name="fmuln" op="FPA" funct="0x02" explain="浮動小数点数同士の掛け算*-1"/>
+		<FINVN use="false" name="finvn" op="FPA" funct="0x02" explain="浮動小数点数の逆数*-1"/>
 		<FDIV name="fdiv" op="FPI" funct="3" explain="浮動小数点数同士の割り算"/>
 
 		<!-- op regf -->

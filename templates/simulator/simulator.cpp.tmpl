@@ -35,7 +35,7 @@
 	def getOp(type):
 		t_op = getInst(type).get("op")
 		t_op is not None, "name is None(" + type + ")"
-		return getName(type).upper() if t_op.isdigit() else t_op
+		return getName(type).upper() if not t_op.isalpha() else t_op
 			
 	def getFunct(type):
 		return getName(type).upper() + "_F"
@@ -48,7 +48,7 @@
 		return filter(lambda inst: isUse(inst["type"]) and getOp(inst["type"]) == op, instInfo)
 
 	def getInstsWithoutConstOp():
-		return filter(lambda inst: isUse(inst["type"]) and getInst(inst["type"]).get("op", "0").isdigit(), instInfo)
+		return filter(lambda inst: isUse(inst["type"]) and not getInst(inst["type"]).get("op").isalpha(), instInfo)
 
 	def getArgs(formAsm):
 		xml_formAsm = getInst(inst["type"]).get("formAsm")
@@ -68,6 +68,7 @@
 	assert endian is not None, "endian is None"
 %>#include "../include/common.h"
 #include <cmath>
+#include <cassert>
 #include <fcntl.h>
 
 // 命令の各要素にアクセスする関数を定義
@@ -138,7 +139,7 @@ uint32_t lreg;
 //------------------------------------------------------------------
 
 // 停止命令か
-#define isHalt(opcode, funct) (opcode == ${getOp("HALT")} && funct == ${getFunct("HALT")})
+#define isHalt(opcode, funct) (opcode == ${getOp("HALT")}${" && funct == " + getFunct("HALT") if getInst("HALT").get("funct") is not None and not getInst("HALT").get("funct").isalpha() else ""})
 
 // 発行命令数
 long long unsigned cnt;
@@ -274,9 +275,11 @@ void initializeHeap()
 	// バイナリの最初の１ワード目に定数テーブルのサイズが書かれている
 	int heapSize = ${"toggle_endian(ROM[0])" if endian == "BIG" else "ROM[0]"};
 	pc += ROM_ADDRESSING_UNIT;
-	cerr << "heapSize = " << heapSize << endl;
+//	cerr << "heapSize = " << heapSize << endl;
 	while (heapSize > 0)
 	{
+		assert(rom_addr(pc) >= 0);
+		assert(rom_addr(HR) >= 0);
 		RAM[addr(HR)] = ${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"};
 		heapSize -= ADDRESSING_UNIT;
 		HR += ADDRESSING_UNIT;
@@ -284,8 +287,11 @@ void initializeHeap()
 	}
 	% elif constTableType == "toTag":
 	// constTableTagが来るまでを定数テーブルとする
+	assert(rom_addr(pc) >= 0);
 	while (${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"} != ${constTableTag})
 	{
+		assert(rom_addr(pc) >= 0);
+		assert(rom_addr(HR) >= 0);
 		RAM[addr(HR)] = ${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"};
 		HR += ADDRESSING_UNIT;
 		pc += ROM_ADDRESSING_UNIT;
@@ -305,13 +311,15 @@ int simulate(char* srcPath)
 	uint32_t inst;
 
 	uint8_t opcode, funct;
+	
+	conv tmp1;
 
 	// 初期化
 	FR = sizeof(RAM)${" - 4" if addressing == "byte" else " / 4 - 1"};
 	// cerr << "FR = " << FR << endl;
 
 	// バイナリを読み込む
-/*	FILE* srcFile = fopen(srcPath, "rb");
+	FILE* srcFile = fopen(srcPath, "rb");
 	if (srcFile == NULL)
 	{
 		cerr << "couldn't open " << srcPath << endl;
@@ -319,15 +327,6 @@ int simulate(char* srcPath)
 	}
 	fread(ROM, 4 * ROM_NUM, 1, srcFile);
 	fclose(srcFile);
-*/
-	int fd = open(srcPath, O_RDONLY);
-	if (fd < 0)
-	{
-		cerr << "couldn't open " << srcPath << endl;
-		return 1;
-	}
-	read(fd, ROM, ROM_NUM * 4);
-	close(fd);
 	
 	cerr << srcPath << endl;
 
@@ -346,15 +345,16 @@ int simulate(char* srcPath)
 		// フレーム/ヒープレジスタは絶対に負になることはない
 		if (FR < 0)
 		{
-			cerr << "error> Frame Register(reg[" << ${frameReg} << "]) has become less than 0." << endl;
+			cerr << "error> Frame Register(reg[${frameReg}]) has become less than 0." << endl;
 			break;
 		}
 		if(HR < 0) 
 		{
-			cerr << "error> Heap Register(reg[" << ${heapReg} << "]) has become less than 0." << endl;
+			cerr << "error> Heap Register(reg[${heapReg}]) has become less than 0." << endl;
 			break;
 		}
 
+		assert(rom_addr(pc) >= 0);
 		inst = ${"toggle_endian(ROM[rom_addr(pc)])" if endian == "BIG" else "ROM[rom_addr(pc)]"};
 
 		opcode = get_opcode(inst);

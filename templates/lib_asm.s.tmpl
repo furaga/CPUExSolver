@@ -23,15 +23,17 @@
 		assert inst is not None, "inst is None(" + type + ")"
 		return inst
 	
-	def getName(type):
-		name = getInst(type).get("name")
-		name is not None, "name is None(" + type + ")"
-		return name
-
 	def isUse(type):
 		use = getInst(type).get("use", "true")
 		return use != "false"
 	
+	def getName(type):
+		if type == "SLLI" and not isUse("SLLI"):
+			type = "SHIFTI"
+		name = getInst(type).get("name")
+		name is not None, "name is None(" + type + ")"
+		return name
+
 	def addi(rt, rs, imm):
 		if isUse("ADDI"):
 			return "%s %s, %s, %s" % (getName("ADDI"), rt, rs, str(imm))
@@ -49,6 +51,26 @@
 			ans += "\t%s %s, %s, %s" % (getName("FADD"), rd, rs, FREGS[-1])
 			return ans
 
+	def fldi(rt, rs, imm):
+		if isUse("FLDI"):
+			return "%s %s, %s, %s" % (getName("FLDI"), rt, rs, str(imm))
+		elif isUse("LDI") and isUse("IMOVF"):
+			ans = "%s %s, %s, %s\n" % (getName("LDI"), IREGS[-2], rs, str(imm))
+			ans += "\t%s %s, %s" % (getName("IMOVF"), rt, IREGS[-2])
+			return ans
+		else:
+			assert False, "this architecture must support LdFi or IMovF" 
+
+	def fsti(rt, rs, imm):
+		if isUse("FSTI"):
+			return "%s %s, %s, %s" % (getName("FSTI"), rt, rs, str(imm))
+		elif isUse("STI") and isUse("FMOVI"):
+			ans = "%s %s, %s\n" % (getName("FMOVI"), IREGS[-2], rt)
+			ans += "\t%s %s, %s, %s" % (getName("STI"), IREGS[-2], rs, str(imm))
+			return ans
+		else:
+			assert False, "this architecture must support LdFi or IMovF" 
+
 	def fset(rs, hi, lo, ss):
 		if isUse("FSETHI") and isUse("FSETLO"):
 			ans = "%s %s, %s\n" % (getName("FSETHI"), rs, str(hi))
@@ -58,7 +80,7 @@
 			ans = "%s %s, %s\n" % (getName("SETHI"), IREGS[-2], str(hi))
 			ans += "\t%s %s, %s\n" % (getName("SETLO"), IREGS[-2], str(lo))
 			ans += "\t%s %s, %s, %s\n" % (getName("STI"), IREGS[-2], FR, str(ss))
-			ans += "\t%s %s, %s, %s\n" % (getName("FLDI"), rs, FR, str(ss))
+			ans += "\t%s\n" % fldi(rs, FR, str(ss))
 			return ans
 
 	def call(label):
@@ -66,6 +88,7 @@
 			return "%s %s" % (getName("CALL"), label)
 		else:
 			assert isUse("JMP_LNK") and isUse("JMPREG_LNK"), "[call()]%s and %s must be supported." % (getName("JMP_LNK"), getName("JMPREG_LNK"))
+			assert LR != r, "[_return()] LR must be one of the intRegs."
 			ans = "%s %s, %s, 0\n" % (getName("STI"), LR, FR)
 			ans += "\t" + (addi(FR, FR, -addressingUnit)) + "\n"
 			ans += "\t%s %s\n" % (getName("JMP_LNK"), label)
@@ -79,7 +102,7 @@
 		else:
 			# LRは整数レジスタの一つのはず
 			# リンクレジスタの退避とかは_call()の方で都合をつける
-			assert LR != "", "[_return()] LR must be one of the intRegs."
+			assert LR != r, "[_return()] LR must be one of the intRegs."
 			return "%s %s" % (getName("JMPREG"), LR)
 
 %>${".init_heap_size\t0" if constTableType != "no_use" else ""}
@@ -123,7 +146,7 @@ CREATE_FLOAT_ARRAY_LOOP:
 	${getName("BLT")} ${HR}, ${IREGS[1]}, CREATE_FLOAT_ARRAY_CONTINUE
 	${_return()}
 CREATE_FLOAT_ARRAY_CONTINUE:
-	${getName("FSTI")} ${FREGS[0]}, ${HR}, 0
+	${fsti(FREGS[0], HR, 0)}
 	${addi(HR, HR, addressingUnit)}
 	${getName("BRANCH")} CREATE_FLOAT_ARRAY_LOOP
 
@@ -141,10 +164,10 @@ FLOOR_POSITIVE:
 FLOOR_POSITIVE_MAIN:
 	${getName("FMOV")} ${FREGS[1]}, ${FREGS[0]}
 	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${fsti(FREGS[0], FR, 0)}
 	${getName("LDI")} ${IREGS[1]}, ${FR}, 0
 	${fsub(FREGS[0], FREGS[0], FREGS[2])}
-	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${fsti(FREGS[0], FR, 0)}
 	${getName("LDI")} ${IREGS[1]}, ${FR}, 0
 	${getName("FBLT")} ${FREGS[1]}, ${FREGS[0]}, FLOOR_POSITIVE_RET
 	${_return()}
@@ -207,21 +230,19 @@ ITOF_LOOP:
 ITOF_RET:
 	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
 	${getName("STI")} ${IREGS[0]}, ${FR}, 0
-	${getName("FLDI")}  ${FREGS[0]}, ${FR}, 0
+	${fldi(FREGS[0], FR, 0)}
 	${fsub(FREGS[0], FREGS[0], FREGS[1])}
 	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
 	${_return()}
 ITOF_SMALL:
 	${getName("ADD")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
 	${getName("STI")} ${IREGS[0]}, ${FR}, 0
-	${getName("FLDI")}  ${FREGS[0]}, ${FR}, 0
+	${fldi(FREGS[0], FR, 0)}
 	${fsub(FREGS[0], FREGS[0], FREGS[1])}
 	${_return()}
 ITOF_NEGATIVE_MAIN:
 	${getName("SUB")} ${IREGS[0]}, ${ZR}, ${IREGS[0]}
-
 	${call("ITOF_MAIN")}
-
 	${getName("FNEG")} ${FREGS[0]}, ${FREGS[0]}
 	${_return()}
 
@@ -250,14 +271,14 @@ FTOI_LOOP:
 	${getName("BRANCH")} FTOI_LOOP
 FTOI_RET:
 	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${fsti(FREGS[0], FR, 0)}
 	${getName("LDI")} ${IREGS[2]}, ${FR}, 0
 	${getName("SUB")} ${IREGS[2]}, ${IREGS[2]}, ${IREGS[1]}
 	${getName("ADD")} ${IREGS[0]}, ${IREGS[2]}, ${IREGS[0]}
 	${_return()}
 FTOI_SMALL:
 	${getName("FADD")} ${FREGS[0]}, ${FREGS[0]}, ${FREGS[2]}
-	${getName("FSTI")} ${FREGS[0]}, ${FR}, 0
+	${fsti(FREGS[0], FR, 0)}
 	${getName("LDI")} ${IREGS[0]}, ${FR}, 0
 	${getName("SUB")} ${IREGS[0]}, ${IREGS[0]}, ${IREGS[1]}
 	${_return()}
@@ -294,7 +315,7 @@ min_caml_read_int:
 min_caml_read_float:
 	${call("min_caml_read_int")}
 	${getName("STI")} ${IREGS[0]}, ${FR}, 0
-	${getName("FLDI")}  ${FREGS[0]}, ${FR}, 0
+	${fldi(FREGS[0], FR, 0)}
 	${_return()}
 
 ${comment}----------------------------------------------------------------------

@@ -28,8 +28,11 @@ type t =
 	| FSub of Id.t * Id.t * Id.t
 	| FMul of Id.t * Id.t * Id.t
 	| FDiv of Id.t * Id.t * Id.t
-	| FSqrt of Id.t * Id.t
+	| FPI of Id.t * Id.t * Id.t
 	| FAbs of Id.t * Id.t
+	| FInv of Id.t * Id.t
+	| FMovI of Id.t * Id.t
+	| IMovF of Id.t * Id.t
 	| Ld of Id.t * Id.t * Id.t
 	| St of Id.t * Id.t * Id.t
 	| Ldi of Id.t * Id.t * int
@@ -63,67 +66,19 @@ type stmt = {
 let prog = ref []
 let add_stmt inst = prog := {inst = inst; state = Exist} :: !prog
 
-(* %g1の無駄な増減を削除 *)
-let get_some x = match x with Some a -> a | _ -> assert false
-let eliminate_sp_calc ls =
-	List.fold_left (
-		fun target stmt ->
-			match stmt.inst with
-				| Addi (x, y, n) when target <> None && x = Asm.reg_sp && y = Asm.reg_sp ->
-					(match (get_some target).inst with
-						| Subi (x2, y2, n2) when n = n2 ->
-							(get_some target).state <- Vanish;
-							stmt.state <- Vanish;
-							None
-						| _ -> None
-					)
-				| Subi (x, y, n) when target <> None && x = Asm.reg_sp && y = Asm.reg_sp -> 
-					(match (get_some target).inst with
-						| Addi (x2, y2, n2) when n = n2 ->
-							(get_some target).state <- Vanish;
-							stmt.state <- Vanish;
-							None
-						| _ -> None
-					)
-				| Addi (x, y, n) when x = Asm.reg_sp && y = Asm.reg_sp -> Some stmt
-				| Subi (x, y, n) when x = Asm.reg_sp && y = Asm.reg_sp -> Some stmt
-				| Label _
-				| B _
-				| Jmp _
-				| JCmp _
-				| Jal _
-				| Jarl _
-				| Call _
-				| CallR _
-				| Return
-				| Halt -> None
-				| Ld (x, y, _) 
-				| St (x, y, _)
-				| Ldi (x, y, _) 
-				| Sti (x, y, _)
-				| LdF (x, y, _)
-				| StF (x, y, _)
-				| LdFi (x, y, _)
-				| StFi (x, y, _) when x = Asm.reg_sp || y = Asm.reg_sp -> None
-				| _ -> target
-	) None ls
-
-(* 最適化 *)
-let optimize () = eliminate_sp_calc !prog
-
 (* 一文を出力 *)
 let output_stmt oc stmt =
 	if stmt.state = Vanish then ()
 	else (
 		(match stmt.state with
 			| Exist -> ()
-			| Vanish -> Printf.fprintf oc "! "
+			| Vanish -> Printf.fprintf oc "# "
 		);
 		match stmt.inst with
 			| Comment comment -> Printf.fprintf oc "%s\n" comment
 			| Label label -> Printf.fprintf oc "%s:\n" label
-			| SetL (dst, label) -> 	Printf.fprintf oc "\tsetL %s, %s\n" dst label (* ラベルのコピー *)
-			| FSet (dst, f) -> 	Printf.fprintf oc "\tfset %s, %.20E\n" dst f
+			| SetL (dst, label) -> 	Printf.fprintf oc "\tsetl %s, %s\n" dst label (* ラベルのコピー *)
+			| FSet (dst, f) -> 	Printf.fprintf oc "\tfliw %s, %.20E\n" dst f
 			| FMvhi (dst, n) -> Printf.fprintf oc "\tfmvhi\t%s, %d\n" dst n
 			| FMvlo (dst, n) -> Printf.fprintf oc "\tfmvlo\t%s, %d\n" dst n
 			| Mvhi (dst, n) -> Printf.fprintf oc "\tmvhi\t%s, %d\n" dst n
@@ -135,40 +90,47 @@ let output_stmt oc stmt =
 			| Sub (dst, x, y) -> Printf.fprintf oc "\tsub\t%s, %s, %s\n" dst x y
 			| Mul (dst, x, y) -> Printf.fprintf oc "\tmul\t%s, %s, %s\n" dst x y
 			| Div (dst, x, y) -> Printf.fprintf oc "\tdiv\t%s, %s, %s\n" dst x y
-			| SLL (dst, x, y) -> Printf.fprintf oc "\tsll\t%s, %s, %s\n" dst x y
+			(* コンパイラでSLLが発行されることは現状ない *)
+			| SLL (dst, x, y) -> failwith "this architecture must support sll or shift."
 			| Addi (dst, x, y) -> Printf.fprintf oc "\taddi\t%s, %s, %d\n" dst x y
 			| Subi (dst, x, y) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" dst x y
 			| Muli (dst, x, y) -> Printf.fprintf oc "\tmuli\t%s, %s, %d\n" dst x y
 			| Divi (dst, x, y) -> Printf.fprintf oc "\tdivi\t%s, %s, %d\n" dst x y
 			| SLLi (dst, x, y) -> Printf.fprintf oc "\tslli\t%s, %s, %d\n" dst x y
-			| SRLi (dst, x, y) -> Printf.fprintf oc "\tsrli\t%s, %s, %d\n" dst x y
+			| SRLi (dst, x, y) -> Printf.fprintf oc "\tsrai\t%s, %s, %d\n" dst x y
 			| FAdd (dst, x, y) -> Printf.fprintf oc "\tfadd\t%s, %s, %s\n" dst x y
 			| FSub (dst, x, y) -> Printf.fprintf oc "\tfsub\t%s, %s, %s\n" dst x y
 			| FMul (dst, x, y) -> Printf.fprintf oc "\tfmul\t%s, %s, %s\n" dst x y
 			| FDiv (dst, x, y) -> Printf.fprintf oc "\tfdiv\t%s, %s, %s\n" dst x y
-			| FSqrt (dst, src) -> Printf.fprintf oc "\tfsqrt\t%s, %s\n" dst src
+			| FPI (op, dst, src) -> Printf.fprintf oc "\t%s\t%s, %s\n" op dst src
 			| FAbs (dst, src) -> Printf.fprintf oc "\tfabs\t%s, %s\n" dst src
+
+			| FInv (dst, src) -> Printf.fprintf oc "\tfinv\t%s, %s\n" dst src
+			| FMovI (dst, src) -> Printf.fprintf oc "\tfmovi\t%s, %s\n" dst src
+			| IMovF (dst, src) -> Printf.fprintf oc "\timovf\t%s, %s\n" dst src
+
+			(* 即値バージョンのLd, St系では、大人の事情によりindexの符号が逆になってしまっているので符号を反転させる。 *)
 			| Ld (dst, src, index) -> Printf.fprintf oc "\tld\t%s, %s, %s\n" dst src index
-			| Ldi (dst, src, index) -> Printf.fprintf oc "\tldi\t%s, %s, %d\n" dst src index;
+			| Ldi (dst, src, index) -> Printf.fprintf oc "\tldi\t%s, %s, %d\n" dst src (-index);
 			| LdF (dst, src, index) -> Printf.fprintf oc "\tfld\t%s, %s, %s\n" dst src index
-			| LdFi (dst, src, index) -> Printf.fprintf oc "\tfldi\t%s, %s, %d\n" dst src index;
+			| LdFi (dst, src, index) -> Printf.fprintf oc "\tfldi\t%s, %s, %d\n" dst src (-index);
 			| St (src, target, index) -> Printf.fprintf oc "\tst\t%s, %s, %s\n" src target index
-			| Sti (src, target, index) -> Printf.fprintf oc "\tsti\t%s, %s, %d\n" src target index;
+			| Sti (src, target, index) -> Printf.fprintf oc "\tsti\t%s, %s, %d\n" src target (-index);
 			| StF (src, target, index) -> Printf.fprintf oc "\tfst\t%s, %s, %s\n" src target index
-			| StFi (src, target, index) -> Printf.fprintf oc "\tfsti\t%s, %s, %d\n" src target index;
+			| StFi (src, target, index) -> Printf.fprintf oc "\tfsti\t%s, %s, %d\n" src target (-index);
 			| Input src -> 	Printf.fprintf oc "\tinput\t%s\n" src
 			| InputW src -> Printf.fprintf oc "\tinputw\t%s\n" src
 			| InputF src -> Printf.fprintf oc "\tinputf\t%s\n" src
 			| Output dst -> Printf.fprintf oc "\toutput\t%s\n" dst
 			| OutputW dst -> Printf.fprintf oc "\toutputw\t%s\n" dst
 			| OutputF dst -> Printf.fprintf oc "\toutputf\t%s\n" dst
-			| B reg -> Printf.fprintf oc "\tb\t%s\n" reg
-			| Jmp label -> Printf.fprintf oc "\tjmp\t%s\n" label
+			| B reg -> Printf.fprintf oc "\tjr\t%s\n" reg
+			| Jmp label -> Printf.fprintf oc "\tj\t%s\n" label
 			| JCmp (typ, x, y, label) -> Printf.fprintf oc "\t%s\t%s, %s, %s\n" typ x y label
 			| Jal label -> Printf.fprintf oc "\tjal\t%s\n" label
-			| Jarl cls -> Printf.fprintf oc "\tjarl\t%s\n" cls
+			| Jarl cls -> Printf.fprintf oc "\tjalr\t%s\n" cls
 			| Call label -> Printf.fprintf oc "\tcall\t%s\n" label
-			| CallR cls -> Printf.fprintf oc "\tcallR\t%s\n" cls
+			| CallR cls -> Printf.fprintf oc "\tcallr\t%s\n" cls
 			| Return -> Printf.fprintf oc "\treturn\n"
 			| Halt -> Printf.fprintf oc "\thalt\n"
 	)

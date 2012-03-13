@@ -1,6 +1,6 @@
 include ../Makefile.in
 
-DEPEND = $(RENDERER) $(CONFIGFILE)
+DEPEND = $(COMDIR) $(RENDERER) $(CONFIGFILE)
 
 TEMPLATES = Makefile.tmpl OCamlMakefile.tmpl\
 float.c.tmpl global.ml.tmpl type.ml.tmpl id.ml.tmpl m.ml.tmpl\
@@ -14,22 +14,22 @@ main.ml.tmpl
 
 SOURCES = $(TEMPLATES:%.tmpl=$(COMDIR)/%)
 
-all: $(SOURCES)
+all:$(DEPEND) $(SOURCES)
 	cd $(COMDIR); make
 
-$(COMDIR)/%akefile:
+$(COMDIR)/%akefile:$(DEPEND)
 	cp ${notdir $@}.tmpl $@
 
-$(COMDIR)/%.ml:
+$(COMDIR)/%.ml:$(DEPEND)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(COMDIR)/%.mll:
+$(COMDIR)/%.mll:$(DEPEND)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(COMDIR)/%.mly:
+$(COMDIR)/%.mly:$(DEPEND)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(COMDIR)/%.c:
+$(COMDIR)/%.c:$(DEPEND)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
 $(COMDIR)/OCamlMakefile: OCamlMakefile.tmpl $(DEPEND)
@@ -57,6 +57,8 @@ $(COMDIR)/typing.ml: typing.ml.tmpl $(DEPEND)
 $(COMDIR)/closure.ml: closure.ml.tmpl $(DEPEND)
 $(COMDIR)/kNormal.ml: kNormal.ml.tmpl $(DEPEND)
 
+$(COMDIR):
+	mkdir $(COMDIR)
 
 clean:
-	rm $(COMDIR)/*
+	rm -rf $(COMDIR)

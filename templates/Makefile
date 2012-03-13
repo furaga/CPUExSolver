@@ -3,33 +3,42 @@ include Makefile.in
 .PHONY: compiler linker assembler simulator
 MAKE_OPTION = 
 
-# TODO
-all: compiler linker assembler simulator dst/lib_asm.s dst/lib_ml.ml
+all: $(DSTDIR_TOP)
+	make $(MAKE_OPTION) assembler
+	make $(MAKE_OPTION) simulator
+	make $(MAKE_OPTION) linker
+	make $(MAKE_OPTION) compiler
+	make $(MAKE_OPTION) $(DSTDIR_TOP)/lib_asm.s_f
+	make $(MAKE_OPTION) $(DSTDIR_TOP)/lib_ml.ml_f
+	make $(MAKE_OPTION) $(DSTDIR_TOP)/Makefile_f
+	make $(MAKE_OPTION) $(DSTDIR_TOP)/Makefile.in_f
 
-
-compiler:
+compiler: $(DSTDIR_TOP)
 	cd compiler; make $(MAKE_OPTION)
 
-linker:
+linker: $(DSTDIR_TOP)
 	cd linker; make $(MAKE_OPTION)
 	
-assembler:
+assembler: $(DSTDIR_TOP)
 	cd assembler; make $(MAKE_OPTION)
 	
-simulator:
+simulator: $(DSTDIR_TOP)
 	cd simulator; make $(MAKE_OPTION)
 
-# TODO
-dst/lib_asm.s: lib_asm.s.tmpl ${notdir $(CONFIGFILE)} renderer.py
-	python renderer.py ${notdir $(CONFIGFILE)} lib_asm.s.tmpl > dst/lib_asm.s
+$(DSTDIR_TOP)/lib_asm.s_f: $(DSTDIR_TOP) lib_asm.s.tmpl ${notdir $(CONFIGFILE)} renderer.py
+	python renderer.py ${notdir $(CONFIGFILE)} lib_asm.s.tmpl > $(DSTDIR_TOP)/lib_asm.s
 
-dst/lib_ml.ml: lib_ml.ml.tmpl ${notdir $(CONFIGFILE)} renderer.py
-	python renderer.py ${notdir $(CONFIGFILE)} lib_ml.ml.tmpl > dst/lib_ml.ml
+$(DSTDIR_TOP)/lib_ml.ml_f: $(DSTDIR_TOP) lib_ml.ml.tmpl ${notdir $(CONFIGFILE)} renderer.py
+	python renderer.py ${notdir $(CONFIGFILE)} lib_ml.ml.tmpl > $(DSTDIR_TOP)/lib_ml.ml
+
+$(DSTDIR_TOP)/Makefile_f: $(DSTDIR_TOP) Makefile.tmpl
+	cp Makefile.tmpl $(DSTDIR_TOP)/Makefile
+
+$(DSTDIR_TOP)/Makefile.in_f: $(DSTDIR_TOP) Makefile.in.tmpl
+	cp Makefile.in.tmpl $(DSTDIR_TOP)/Makefile.in
+
+$(DSTDIR_TOP):
+	mkdir $(DSTDIR_TOP)
 
 clean:
-	cd compiler; make clean -k
-	cd assembler; make clean -k
-	cd simulator; make clean -k
-	cd linker; make clean -k
-	cd assembler; rm $(INCDIR)/*
-	rm dst/lib_asm.s 
+	rm -rf $(DSTDIR_TOP)

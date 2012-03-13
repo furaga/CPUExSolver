@@ -3,6 +3,10 @@ CC = gcc
 CFLAGS = -g -O2 -Wall
 
 default: native-code
+	rm *.cmx
+	rm *.cmi
+	rm *.o
+
 clean:: nobackup
 
 # mliファイルなどなかった

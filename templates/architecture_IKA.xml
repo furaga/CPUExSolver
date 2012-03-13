@@ -93,8 +93,8 @@
 		<!-- SET -->
 		<SETLO name="mvlo" op="007" explain="整数レジスタ下位16ビットに即値代入"/>
 		<SETHI name="mvhi" op="017" explain="整数レジスタ上位16ビットに即値代入"/>
-		<FSETLO use="false" name="fmvlo" op="16" explain="浮動小数レジスタ下位16ビットに即値代入"/>
-		<FSETHI use="false" name="fmvhi" op="17" explain="浮動小数レジスタ上位16ビットに即値代入"/>
+		<FSETLO name="fmvlo" op="037" explain="浮動小数レジスタ下位16ビットに即値代入"/>
+		<FSETHI name="fmvhi" op="036" explain="浮動小数レジスタ上位16ビットに即値代入"/>
 
 		<!-- branch -->
 		<BRANCH name="jmp" op="002" explain="無条件分岐"/>

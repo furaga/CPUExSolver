@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<architecture name="myArchitecture2">
+	<registers>
+		<!-- %は特殊文字として扱われるためとして%%とエスケープする -->
+		<intRegs num="32" prefix="＄r"/>
+		<floatRegs num="32" prefix="＄f"/>
+		<constFloatRegs num="16"/>
+		<zeroReg index="0"/>
+		<frameReg index="1"/>
+		<heapReg index="2"/>
+		<oneReg index="29"/>
+		<minusOneReg index="30"/>
+		<!-- indexを""にすると汎用レジスタとは別に用意されたレジスタが使われる -->
+		<linkReg index=""/>
+	</registers>
+
+	<RAM size="8.00" />
+	<comment text="#" />
+
+	<binary endian="LITTLE" constTableType="no_use" tag="0xffFFffFF" addressing="word" rom_addressing="word" direction="toBig"/>
+	<instructions forward="true">
+		<CONST>
+			<ALU value="0b0"/>
+			<FPU value="0b1"/>
+			<Move value="0b10"/>
+			<System value="0b11"/>
+		</CONST>
+
+		<ADD name="add" op="ALU" funct="0b0"/>
+		<ADDI name="addi" op="0b100"/>
+		<AND name="and" op="ALU" funct="0b1001"/>
+		<ANDI name="andi" op="0b1101"/>
+		<BEQ name="beq" op="0b10110" addressMode="relative"/>
+		<BGE name="bge" op="0b11011" addressMode="relative"/>
+		<BGT name="bgt" op="0b11010" addressMode="relative"/>
+		<BLE name="ble" op="0b11001" addressMode="relative"/>
+		<BLT name="blt" op="0b11000" addressMode="relative"/>
+		<BNE name="bne" op="0b10111" addressMode="relative"/>
+		<BRANCH name="j" op="0b10101"/>
+		<CALL name="call" op="0b100101"/>
+		<CALLREG name="callr" op="0b100110"/>
+		<DIV use="false" name="div" op="ALU" funct="0b11"/>
+		<DIVI use="false" name="divi" op="0b111"/>
+		<FABS use="false" name="fabs" op="FPU" funct="0b1000"/>
+		<FADD name="fadd" op="FPU" funct="0b1"/>
+		<FATAN use="false" name="fatan" op="FPU" funct="0b1110"/>
+		<FBEQ name="fbeq" op="0b11100" addressMode="relative"/>
+		<FBGE name="fbge" op="0b100001" addressMode="relative"/>
+		<FBGT name="fbgt" op="0b100000" addressMode="relative"/>
+		<FBLE name="fble" op="0b11111" addressMode="relative"/>
+		<FBLT name="fblt" op="0b11110" addressMode="relative"/>
+		<FBNE name="fbne" op="0b11101" addressMode="relative"/>
+		<FCOS use="false" name="fcos" op="FPU" funct="0b1100"/>
+		<FDIV name="fdiv" op="FPU" funct="0b101"/>
+		<FINV use="false" name="finv" op="FPU" funct="0b110"/>
+		<FINVN use="false" name="finvn" op="FPU" funct="0b111"/>
+		<FLD name="fld" op="ALU" funct="0b10001"/>
+		<FLDI name="fldi" op="0b101011"/>
+		<FLOOR use="false" name="floor" op="FPU" funct="0b1010"/>
+		<FMOV name="fmov" op="Move" funct="0b1"/>
+		<FMOVI name="fmovi" op="Move" funct="0b101"/>
+		<FMUL name="fmul" op="FPU" funct="0b11"/>
+		<FMULN name="fmuln" op="FPU" funct="0b100"/>
+		<FNEG name="fneg" op="FPU" funct="0b0"/>
+		<FSETHI name="fmvhi" op="0b10100"/>
+		<FSETLO name="fmvlo" op="0b10011"/>
+		<FSIN use="false" name="fsin" op="FPU" funct="0b1011"/>
+		<FSQRT name="fsqrt" op="FPU" funct="0b1001"/>
+		<FST name="fst" op="ALU" funct="0b10000"/>
+		<FSTI name="fsti" op="0b101010"/>
+		<FSUB name="fsub" op="FPU" funct="0b10"/>
+		<FTAN use="false" name="ftan" op="FPU" funct="0b1101"/>
+		<FTOI name="ftoi" op="Move" funct="0b11"/>
+		<HALT name="halt" op="System" funct="0b110"/>
+		<IMOVF name="imovf" op="Move" funct="0b100"/>
+		<INPUTBYTE name="input" op="System" funct="0b0"/>
+		<INPUTFLOAT name="inputf" op="System" funct="0b10"/>
+		<INPUTWORD name="inputw" op="System" funct="0b1"/>
+		<ITOF name="itof" op="Move" funct="0b10"/>
+		<JMPREG name="jr" op="0b100010"/>
+		<JMPREG_LNK use="false" name="jalr" op="0b100100"/>
+		<JMP_LNK use="false" name="jal" op="0b100011"/>
+		<LD name="ld" op="ALU" funct="0b1111"/>
+		<LDI name="ldi" op="0b101001"/>
+		<MOV use="false" name="mov" op="Move" funct="0b0"/>
+		<MUL name="mul" op="ALU" funct="0b10"/>
+		<MULI name="muli" op="0b110"/>
+		<NOR name="nor" op="ALU" funct="0b1011"/>
+		<NORI name="nori" op="0b1111"/>
+		<NOT name="not" op="ALU" funct="0b1101"/>
+		<OR name="or" op="ALU" funct="0b1010"/>
+		<ORI name="ori" op="0b1110"/>
+		<OUTPUTBYTE name="output" op="System" funct="0b11"/>
+		<OUTPUTFLOAT name="outputf" op="System" funct="0b101"/>
+		<OUTPUTWORD name="outputw" op="System" funct="0b100"/>
+		<RETURN name="return" op="0b100111"/>
+		<SETHI name="mvhi" op="0b10010"/>
+		<SETLO name="mvlo" op="0b10001"/>
+		<SHIFT use="false" name="shift" op="ALU" funct="0b1000"/>
+		<SHIFTI use="false" name="shifti" op="0b1100"/>
+		<SLA use="false" name="sla" op="ALU" funct="0b101"/>
+		<SLAI use="false" name="slai" op="0b1001"/>
+		<SLL use="false" name="sll" op="ALU" funct="0b100"/>
+		<SLLI name="slli" op="0b1000"/>
+		<SRA use="false" name="sra" op="ALU" funct="0b111"/>
+		<SRAI name="srai" op="0b1011"/>
+		<SRL use="false" name="srl" op="ALU" funct="0b110"/>
+		<SRLI use="false" name="srli" op="0b1010"/>
+		<ST use="false" name="st" op="ALU" funct="0b1110"/>
+		<STI name="sti" op="0b101000"/>
+		<SUB name="sub" op="ALU" funct="0b1"/>
+		<SUBI name="subi" op="0b101"/>
+		<XOR name="xor" op="ALU" funct="0b1100"/>
+		<XORI name="xori" op="0b10000"/>
+
+		<mnemonics>
+			<NOP name="nop" formAsm="">
+				<inst command="&quot;add\t＄r0, ＄r0, ＄r0&quot;"/>
+			</NOP>
+			<MOV name="mov" formAsm="IRT, IRS">
+				<inst command="&quot;add\t＄r%d, ＄r%d, ＄r0&quot;, rt, rs"/>
+			</MOV>
+			<NOT name="not" formAsm="IRT, IRS">
+				<inst command="&quot;nor\t＄r%d, ＄r%d, ＄r0&quot;, rt, rs, rs" />
+			</NOT>
+			<NEG name="neg" formAsm="IRT, IRS">
+				<inst command="&quot;sub\t＄r%d, ＄r0, ＄r%d&quot;, rt, rs"/>
+			</NEG>
+			<SETL name="setl" formAsm="IRS, LABEL">
+				<inst useLabel="true" command="&quot;addi\t＄r%d, ＄r0, 0&quot;, rs"/>
+			</SETL>
+			<FSET name="fliw" formAsm="FRS, FLOAT">
+				<inst command="&quot;fmvlo\t＄f%d, %d&quot;, rs, gethi(d)"/>
+				<inst command="&quot;fmvhi\t＄f%d, %d&quot;, rs, getlo(d)"/>
+			</FSET>
+		</mnemonics>
+	</instructions>
+</architecture>

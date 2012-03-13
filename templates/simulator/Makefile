@@ -3,16 +3,19 @@ HEADER = $(INCDIR)/common.h
 
 all: $(SIMDIR)/simulator $(SIMDIR)/Makefile
 
-$(SIMDIR)/simulator: $(SIMDIR)/simulator.o
-$(SIMDIR)/simulator.o: $(HEADER)
-$(SIMDIR)/simulator.cpp: simulator.cpp.tmpl $(CONFIGFILE) $(RENDERER)
-$(SIMDIR)/Makefile: Makefile.tmpl $(CONFIGFILE) $(RENDERER)
+$(SIMDIR)/simulator:$(SIMDIR)/simulator.o
+$(SIMDIR)/simulator.o:$(HEADER)
+$(SIMDIR)/simulator.cpp:simulator.cpp.tmpl $(CONFIGFILE) $(RENDERER)
+$(SIMDIR)/Makefile:Makefile.tmpl $(CONFIGFILE) $(RENDERER)
 
-$(SIMDIR)/%.cpp: $(RENDERER) $(CONFIGFILE)
+$(SIMDIR)/%.cpp:$(SIMDIR) $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
 
-$(SIMDIR)/Makefile: $(RENDERER) $(CONFIGFILE)
+$(SIMDIR)/Makefile:$(SIMDIR) $(RENDERER) $(CONFIGFILE)
 	python $(RENDERER) $(CONFIGFILE) ${notdir $@}.tmpl > $@
+
+$(SIMDIR):
+	mkdir $(SIMDIR)
 
 clean:
-	rm $(SIMDIR)/*
+	rm -rf $(SIMDIR)

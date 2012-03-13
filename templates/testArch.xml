@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<architecture name="testArch">
+	<registers>
+		<!-- %は特殊文字として扱われるためとして%%とエスケープする -->
+		<intRegs num="32" prefix="＄int"/>
+		<floatRegs num="32" prefix="＄f"/>
+		<constFloatRegs num="16"/>
+		<zeroReg index="0"/>
+		<frameReg index="1"/>
+		<heapReg index="2"/>
+		<oneReg index="29"/>
+		<minusOneReg index="30"/>
+		<!-- indexを""にすると汎用レジスタとは別に用意されたレジスタが使われる -->
+		<linkReg index="31"/>
+	</registers>
+
+	<RAM size="8.00" />
+	<comment text="#" />
+
+	<binary endian="LITTLE" constTableType="no_use" tag="0xffFFffFF" addressing="word" rom_addressing="word" direction="toBig"/>
+	<instructions forward="true">
+		<CONST>
+			<ALU value="0b0"/>
+			<FPU value="0b1"/>
+			<Move value="0b10"/>
+			<System value="0b11"/>
+		</CONST>
+
+		<ADD name="add" op="ALU" funct="0b0"/>
+		<ADDI use="false" name="addi" op="0b100"/>
+		<AND use="false" name="and" op="ALU" funct="0b1001"/>
+		<ANDI use="false" name="andi" op="0b1101"/>
+		<BEQ name="beq" op="0b10110" addressMode="relative"/>
+		<BGE use="false" name="bge" op="0b11011" addressMode="relative"/>
+		<BGT use="false" name="bgt" op="0b11010" addressMode="relative"/>
+		<BLE use="false" name="ble" op="0b11001" addressMode="relative"/>
+		<BLT name="blt" op="0b11000" addressMode="relative"/>
+		<BNE use="false" name="bne" op="0b10111" addressMode="relative"/>
+		<BRANCH name="j" op="0b10101"/>
+		<CALL use="false" name="call" op="0b100101"/>
+		<CALLREG use="false" name="callr" op="0b100110"/>
+		<DIV use="false" name="div" op="ALU" funct="0b11"/>
+		<DIVI use="false" name="divi" op="0b111"/>
+		<FABS use="false" name="fabs" op="FPU" funct="0b1000"/>
+		<FADD name="fadd" op="FPU" funct="0b1"/>
+		<FATAN use="false" name="fatan" op="FPU" funct="0b1110"/>
+		<FBEQ name="fbeq" op="0b11100" addressMode="relative"/>
+		<FBGE use="false" name="fbge" op="0b100001" addressMode="relative"/>
+		<FBGT use="false" name="fbgt" op="0b100000" addressMode="relative"/>
+		<FBLE use="false" name="fble" op="0b11111" addressMode="relative"/>
+		<FBLT name="fblt" op="0b11110" addressMode="relative"/>
+		<FBNE use="false" name="fbne" op="0b11101" addressMode="relative"/>
+		<FCOS use="false" name="fcos" op="FPU" funct="0b1100"/>
+		<FDIV use="false" name="fdiv" op="FPU" funct="0b101"/>
+		<FINV name="finv" op="FPU" funct="0b110"/>
+		<FINVN use="false" name="finvn" op="FPU" funct="0b111"/>
+		<FLD use="false" name="fld" op="ALU" funct="0b10001"/>
+		<FLDI name="fldi" op="0b101011"/>
+		<FLOOR use="false" name="floor" op="FPU" funct="0b1010"/>
+		<FMOV name="fmov" op="Move" funct="0b1"/>
+		<FMOVI name="fmovi" op="Move" funct="0b101"/>
+		<FMUL name="fmul" op="FPU" funct="0b11"/>
+		<FMULN use="false" name="fmuln" op="FPU" funct="0b100"/>
+		<FNEG name="fneg" op="FPU" funct="0b0"/>
+		<FSETHI use="false" name="fmvhi" op="0b10100"/>
+		<FSETLO use="false" name="fmvlo" op="0b10011"/>
+		<FSIN use="false" name="fsin" op="FPU" funct="0b1011"/>
+		<FSQRT name="fsqrt" op="FPU" funct="0b1001"/>
+		<FST use="false" name="fst" op="ALU" funct="0b10000"/>
+		<FSTI name="fsti" op="0b101010"/>
+		<FSUB name="fsub" op="FPU" funct="0b10"/>
+		<FTAN use="false" name="ftan" op="FPU" funct="0b1101"/>
+		<FTOI use="false" name="ftoi" op="Move" funct="0b11"/>
+		<HALT name="halt" op="System" funct="0b110"/>
+		<IMOVF use="false" name="imovf" op="Move" funct="0b100"/>
+		<INPUTBYTE name="input" op="System" funct="0b0"/>
+		<INPUTFLOAT use="false" name="inputf" op="System" funct="0b10"/>
+		<INPUTWORD name="inputw" op="System" funct="0b1"/>
+		<ITOF use="false" name="itof" op="Move" funct="0b10"/>
+		<JMPREG name="jr" op="0b100010"/>
+		<JMPREG_LNK name="jalr" op="0b100100"/>
+		<JMP_LNK name="jal" op="0b100011"/>
+		<LD use="false" name="ld" op="ALU" funct="0b1111"/>
+		<LDI name="ldi" op="0b101001"/>
+		<MOV use="false" name="mov" op="Move" funct="0b0"/>
+		<MUL use="false" name="mul" op="ALU" funct="0b10"/>
+		<MULI use="false" name="muli" op="0b110"/>
+		<NOR use="false" name="nor" op="ALU" funct="0b1011"/>
+		<NORI use="false" name="nori" op="0b1111"/>
+		<NOT use="false" name="not" op="ALU" funct="0b1101"/>
+		<OR use="false" name="or" op="ALU" funct="0b1010"/>
+		<ORI use="false" name="ori" op="0b1110"/>
+		<OUTPUTBYTE name="output" op="System" funct="0b11"/>
+		<OUTPUTFLOAT use="false" name="outputf" op="System" funct="0b101"/>
+		<OUTPUTWORD use="false" name="outputw" op="System" funct="0b100"/>
+		<RETURN use="false" name="return" op="0b100111"/>
+		<SETHI name="mvhi" op="0b10010"/>
+		<SETLO name="mvlo" op="0b10001"/>
+		<SHIFT use="false" name="shift" op="ALU" funct="0b1000"/>
+		<SHIFTI use="false" name="shifti" op="0b1100"/>
+		<SLA use="false" name="sla" op="ALU" funct="0b101"/>
+		<SLAI use="false" name="slai" op="0b1001"/>
+		<SLL use="false" name="sll" op="ALU" funct="0b100"/>
+		<SLLI name="slli" op="0b1000"/>
+		<SRA use="false" name="sra" op="ALU" funct="0b111"/>
+		<SRAI name="srai" op="0b1011"/>
+		<SRL use="false" name="srl" op="ALU" funct="0b110"/>
+		<SRLI use="false" name="srli" op="0b1010"/>
+		<ST use="false" name="st" op="ALU" funct="0b1110"/>
+		<STI name="sti" op="0b101000"/>
+		<SUB name="sub" op="ALU" funct="0b1"/>
+		<SUBI use="false" name="subi" op="0b101"/>
+		<XOR use="false" name="xor" op="ALU" funct="0b1100"/>
+		<XORI use="false" name="xori" op="0b10000"/>
+
+		<mnemonics>
+			<NOP name="nop" formAsm="">
+				<inst command="&quot;add\t＄int0, ＄int0, ＄int0&quot;"/>
+			</NOP>
+			<MOV name="mov" formAsm="IRT, IRS">
+				<inst command="&quot;add\t＄int%d, ＄int%d, ＄int0&quot;, rt, rs"/>
+			</MOV>
+			<NOT name="not" formAsm="IRT, IRS">
+				<inst command="&quot;nor\t＄int%d, ＄int%d, ＄int0&quot;, rt, rs, rs" />
+			</NOT>
+			<NEG name="neg" formAsm="IRT, IRS">
+				<inst command="&quot;sub\t＄int%d, ＄int0, ＄int%d&quot;, rt, rs"/>
+			</NEG>
+			<SETL name="setl" formAsm="IRS, LABEL">
+				<inst useLabel="true" command="&quot;addi\t＄int%d, ＄int0, 0&quot;, rs"/>
+			</SETL>
+			<FSET name="fliw" formAsm="FRS, FLOAT">
+				<inst command="&quot;fmvlo\t＄f%d, %d&quot;, rs, gethi(d)"/>
+				<inst command="&quot;fmvhi\t＄f%d, %d&quot;, rs, getlo(d)"/>
+			</FSET>
+		</mnemonics>
+	</instructions>
+</architecture>

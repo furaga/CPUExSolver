@@ -119,7 +119,10 @@ let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 let get_arg_regs x = try (M.find x !fundata).arg_regs with Not_found -> failwith (Printf.sprintf "Not_found %s\n" x)
 let get_ret_reg x = try (M.find x !fundata).ret_reg with Not_found -> failwith (Printf.sprintf "Not_found %s\n" x)
 let get_use_regs x = try (M.find x !fundata).use_regs with Not_found -> S.of_list (allregs @ allfregs)
-let is_reg x = (String.sub x 0 (String.length "${r}") = "${r}") || (String.sub x 0 (String.length "${f}") = "${f}")
+let is_reg x = 
+	let len_r = String.length "${r}" in
+	let len_f = String.length "${f}" in
+	(String.length x > len_r && String.sub x 0 len_r = "${r}") || (String.length x > len_f && String.sub x 0 len_f = "${f}")
 
 let rec remove_and_uniq xs = function
   | [] -> []

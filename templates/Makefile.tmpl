@@ -1,0 +1,49 @@
+LIB_ML = lib_ml.ml
+LIB_ASM = lib_asm.s
+BINARY = 
+INLINE = 
+
+# .bin, .sが存在しないときのみビルドして実行
+%.run:
+	make $*.bin
+	simulator/simulator $*.bin
+
+# .bin, .sが存在しててもビルドした上で実行する
+%.run_f:
+	make $*.bin_f
+	simulator/simulator $*.bin
+
+# .bin, .sが存在しないときのみビルド
+%.bin:
+	cat $(LIB_ML) $*.ml > __tmp__.ml
+	compiler/min-caml $(BINARY) $(INLINE) __tmp__
+	cd linker; java linker ../lib_asm.s ../__tmp__.s ${abspath $*.s}
+	assembler/assembler $*.s $*.bin
+
+# .bin, .sが存在しててもビルドする
+%.bin_f:
+	cat $(LIB_ML) $*.ml > __tmp__.ml
+	compiler/min-caml $(BINARY) $(INLINE) __tmp__
+	cd linker; java linker ../lib_asm.s ../__tmp__.s ${abspath $*.s}
+	assembler/assembler $*.s $*.bin
+
+# .sが存在しないときのみビルド
+%.s:
+	cat $(LIB_ML) $*.ml > __tmp__.ml
+	compiler/min-caml $(BINARY) $(INLINE) __tmp__
+	cd linker; java linker ../lib_asm.s ../__tmp__.s ${abspath $*.s}
+
+# .sが存在しててもビルド
+%.s_f:
+	cat $(LIB_ML) $*.ml > __tmp__.ml
+	compiler/min-caml $(BINARY) $(INLINE) __tmp__
+	cd linker; java linker ../lib_asm.s ../__tmp__.s ${abspath $*.s}
+
+# MLがソースファイルのとき
+%.clean_ml:
+	rm $*.s
+	rm $*.bin
+
+# アセンブリがソースファイルのとき。.sを削除したらまずい
+%.clean_s:
+	rm $*.bin

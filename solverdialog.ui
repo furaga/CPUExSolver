@@ -284,7 +284,7 @@
              <item>
               <widget class="QLineEdit" name="lineIRegPrefix">
                <property name="text">
-                <string>＄r</string>
+                <string>$r</string>
                </property>
               </widget>
              </item>
@@ -423,7 +423,7 @@
              <item>
               <widget class="QLineEdit" name="lineFRegPrefix">
                <property name="text">
-                <string>＄f</string>
+                <string>$f</string>
                </property>
               </widget>
              </item>
@@ -2842,7 +2842,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <property name="geometry">
         <rect>
          <x>510</x>
@@ -4750,62 +4750,62 @@
        </item>
        <item row="4" column="0">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="4" column="1">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="5" column="0">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="5" column="1">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="6" column="0">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="6" column="1">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="7" column="0">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="7" column="1">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="8" column="0">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="8" column="1">
         <property name="text">
-         <string>  </string>
+         <string/>
         </property>
        </item>
        <item row="9" column="0">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
        <item row="9" column="1">
         <property name="text">
-         <string> </string>
+         <string/>
         </property>
        </item>
       </widget>

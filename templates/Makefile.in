@@ -8,7 +8,7 @@ CXXFLAGS = -O3 -funroll-loops
 LDFLAGS = -O3 -lm
 
 RENDERER=../renderer.py
-CONFIGFILE=../architecture_maximum.xml
+CONFIGFILE=../architecture_IKA.xml
 #CONFIGFILE=../manga.xml
 
 DSTDIR_TOP = ${abspath dst}

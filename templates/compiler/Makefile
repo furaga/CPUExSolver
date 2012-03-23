@@ -6,7 +6,7 @@ TEMPLATES = Makefile.tmpl OCamlMakefile.tmpl\
 float.c.tmpl global.ml.tmpl type.ml.tmpl id.ml.tmpl m.ml.tmpl\
 s.ml.tmpl time.ml.tmpl syntax.ml.tmpl parser.mly.tmpl lexer.mll.tmpl\
 typing.ml.tmpl kNormal.ml.tmpl alpha.ml.tmpl beta.ml.tmpl betaTuple.ml.tmpl\
-assoc.ml.tmpl inline.ml.tmpl elim.ml.tmpl constArray.ml.tmpl cse.ml.tmpl\
+assoc.ml.tmpl inline.ml.tmpl elim.ml.tmpl constArray.ml.tmpl gvn.ml.tmpl\
 constFold.ml.tmpl globalEnv.ml.tmpl closure.ml.tmpl asm.ml.tmpl virtual.ml.tmpl\
 sglobal.ml.tmpl simm.ml.tmpl block.ml.tmpl liveness.ml.tmpl coloring.ml.tmpl\
 toAsm.ml.tmpl regAlloc.ml.tmpl regAllocWithColoring.ml.tmpl output.ml.tmpl emit.ml.tmpl\
@@ -56,6 +56,7 @@ $(COMDIR)/inline.ml: inline.ml.tmpl $(DEPEND)
 $(COMDIR)/typing.ml: typing.ml.tmpl $(DEPEND)
 $(COMDIR)/closure.ml: closure.ml.tmpl $(DEPEND)
 $(COMDIR)/kNormal.ml: kNormal.ml.tmpl $(DEPEND)
+$(COMDIR)/gvn.ml: gvn.ml.tmpl $(DEPEND)
 
 $(COMDIR):
 	mkdir $(COMDIR)

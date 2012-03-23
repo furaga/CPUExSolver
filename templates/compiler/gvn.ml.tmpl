@@ -1,4 +1,8 @@
-(* 共通部分式除去（Common subexpression elimination, CSE）*)
+(*-----------------------------------------------------------------------------
+ *
+ * 大域的値番号付け（Global value numbering, GVN)、だと思う
+ *
+ *-----------------------------------------------------------------------------*)
 open KNormal
 
 let no_effect_fun = ref S.empty
@@ -202,14 +206,4 @@ let rec g env = function
 			xts in (* y という Tuple に対して n 番目の要素を "yn" と番号づけする *)
 			  LetTuple (xts, y, g env e)
 
-let f flg e =
-    no_effect_fun := noeffectfun;
-	let ans = g M.empty e in
-	if flg then
-		begin
-			print_endline "Print KNormal_t(Cse.ml):";
-			print 1 ans;
-			print_newline ();
-			flush stdout;
-		end;
-	ans
+let f e = no_effect_fun := noeffectfun; g M.empty e

@@ -4,14 +4,14 @@ include Makefile.in
 MAKE_OPTION = 
 
 all: $(DSTDIR_TOP)
-	make $(MAKE_OPTION) assembler
-	make $(MAKE_OPTION) simulator
-	make $(MAKE_OPTION) linker
+#	make $(MAKE_OPTION) assembler
+#	make $(MAKE_OPTION) simulator
+#	make $(MAKE_OPTION) linker
 	make $(MAKE_OPTION) compiler
-	make $(MAKE_OPTION) $(DSTDIR_TOP)/lib_asm.s_f
-	make $(MAKE_OPTION) $(DSTDIR_TOP)/lib_ml.ml_f
-	make $(MAKE_OPTION) $(DSTDIR_TOP)/Makefile_f
-	make $(MAKE_OPTION) $(DSTDIR_TOP)/Makefile.in_f
+#	make $(MAKE_OPTION) $(DSTDIR_TOP)/lib_asm.s_f
+#	make $(MAKE_OPTION) $(DSTDIR_TOP)/lib_ml.ml_f
+#	make $(MAKE_OPTION) $(DSTDIR_TOP)/Makefile_f
+#	make $(MAKE_OPTION) $(DSTDIR_TOP)/Makefile.in_f
 
 compiler: $(DSTDIR_TOP)
 	cd compiler; make $(MAKE_OPTION)

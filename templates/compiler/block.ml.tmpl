@@ -4,7 +4,15 @@
 	zeroReg = r + xmlroot.find(".//zeroReg").get("index")
 %>open Asm
 
-let debug = false 
+(*-----------------------------------------------------------------------------
+ * デバッグ出力するか
+ *-----------------------------------------------------------------------------*)
+
+ let debug = false 
+
+(*-----------------------------------------------------------------------------
+ * 型の定義
+ *-----------------------------------------------------------------------------*)
 
 type t =
 	| Nop of (Id.t * Type.t)
@@ -28,7 +36,7 @@ type t =
 	| FDiv of (Id.t * Type.t) * Id.t * Id.t
 	| LdF of (Id.t * Type.t) * Id.t * Asm.id_or_imm
 	| StF of (Id.t * Type.t) * Id.t * Id.t * Asm.id_or_imm
-	| IfEq of (Id.t * Type.t) * Id.t * Asm.id_or_imm * Id.t * Id.t	(* ラスト２つの引数は基本ブロックのthen節・else節のID *)
+	| IfEq of (Id.t * Type.t) * Id.t * Asm.id_or_imm * Id.t * Id.t (* ラスト２つの引数は基本ブロックのthen節・else節のID *)
 	| IfLE of (Id.t * Type.t) * Id.t * Asm.id_or_imm * Id.t * Id.t
 	| IfGE of (Id.t * Type.t) * Id.t * Asm.id_or_imm * Id.t * Id.t
 	| IfFEq of (Id.t * Type.t) * Id.t * Id.t * Id.t * Id.t
@@ -78,9 +86,9 @@ and fundef = {
 type prog = Prog of fundef list * fundef
 
 
-(**********************)
-(** デバッグ支援関数群 **)
-(**********************)
+(*-----------------------------------------------------------------------------
+ * デバッグ支援関数群
+ *-----------------------------------------------------------------------------*)
 
 let eprint_list comment ls =
 	Printf.eprintf "%s" comment;
@@ -110,16 +118,11 @@ let rec print indent f = function
 	| FDiv (xt, x, y) -> Global.indent indent; print_xt xt; Printf.printf " = FDiv %s %s" x y
 	| LdF (xt, x, y') -> Global.indent indent; print_xt xt; Printf.printf " = LdF %s %s" x (pp_id_or_imm y')
 	| StF (xt, x, y, z') -> Global.indent indent; print_xt xt; Printf.printf " = StF %s %s %s" x y (pp_id_or_imm z')
-	| IfEq (xt, x, y', b1, b2) -> 
-		Global.indent indent; print_xt xt; Printf.printf " = IfEq %s %s %s %s" x (pp_id_or_imm y') b1 b2;
-	| IfLE (xt, x, y', b1, b2) -> 
-		Global.indent indent; print_xt xt; Printf.printf " = IfLE %s %s %s %s" x (pp_id_or_imm y') b1 b2;
-	| IfGE (xt, x, y', b1, b2) -> 
-		Global.indent indent; print_xt xt; Printf.printf " = IfGE %s %s %s %s" x (pp_id_or_imm y') b1 b2;
-	| IfFEq (xt, x, y, b1, b2) -> 
-		Global.indent indent; print_xt xt; Printf.printf " = IfFEq %s %s %s %s" x y b1 b2;
-	| IfFLE (xt, x, y, b1, b2) ->
-		Global.indent indent; print_xt xt; Printf.printf " = IfFLE %s %s %s %s" x y b1 b2;
+	| IfEq (xt, x, y', b1, b2) -> Global.indent indent; print_xt xt; Printf.printf " = IfEq %s %s %s %s" x (pp_id_or_imm y') b1 b2;
+	| IfLE (xt, x, y', b1, b2) -> Global.indent indent; print_xt xt; Printf.printf " = IfLE %s %s %s %s" x (pp_id_or_imm y') b1 b2;
+	| IfGE (xt, x, y', b1, b2) -> Global.indent indent; print_xt xt; Printf.printf " = IfGE %s %s %s %s" x (pp_id_or_imm y') b1 b2;
+	| IfFEq (xt, x, y, b1, b2) -> Global.indent indent; print_xt xt; Printf.printf " = IfFEq %s %s %s %s" x y b1 b2;
+	| IfFLE (xt, x, y, b1, b2) -> Global.indent indent; print_xt xt; Printf.printf " = IfFLE %s %s %s %s" x y b1 b2;
 	| CallCls (xt, name, args, fargs) -> assert false
 	| CallDir (xt, Id.L name, args, fargs) ->
 		Global.indent indent; print_xt xt;
@@ -129,7 +132,6 @@ let rec print indent f = function
 		print_string ")"
 	| Save (xt, x, y) -> Global.indent indent; print_xt xt; Printf.printf " = Save %s %s" x y
 	| Restore (xt, x) -> Global.indent indent; print_xt xt; Printf.printf " = Restore %s" x
-
 and print_block indent f {bId = id; bParent = Id.L parent; bStmts = stmts; bHead = head; bTail = tail; bPreds = preds; bSuccs = succs; bLivein = livein; bLiveout = liveout} =
 	Global.indent indent; Printf.printf "[%s]\n" id;
 	Global.indent indent; Printf.printf "{Parent : %s}\n" parent;
@@ -137,8 +139,7 @@ and print_block indent f {bId = id; bParent = Id.L parent; bStmts = stmts; bHead
 	Global.indent indent; Printf.printf "Pred Blocks= "; List.iter (Printf.printf "%s ") preds; print_newline (); 
 	Global.indent indent; Printf.printf "Succ Blocks= "; List.iter (Printf.printf "%s ") succs; print_newline (); 
 	Global.indent indent; Printf.printf "Live in = "; S.iter (fun v -> Printf.printf "%s " v) livein; print_newline ();
-	Global.indent indent; Printf.printf "Live out = "; S.iter (fun v -> Printf.printf "%s " v) liveout; print_newline ();
-*)
+	Global.indent indent; Printf.printf "Live out = "; S.iter (fun v -> Printf.printf "%s " v) liveout; print_newline ();*)
 	(* print stmts *)
 	let rec print_stmts stmt =
 (*		Global.indent indent;*)
@@ -148,13 +149,10 @@ and print_block indent f {bId = id; bParent = Id.L parent; bStmts = stmts; bHead
 		Global.indent indent; Printf.printf "sSucc = %s\n" stmt.sSucc; 
 		Global.indent (1 + indent); Printf.printf "sLive in = "; S.iter (fun v -> Printf.printf "%s " v) stmt.sLivein; print_newline (); 
 		Global.indent (1 + indent); Printf.printf "sLive out = "; S.iter (fun v -> Printf.printf "%s " v) stmt.sLiveout; print_newline ();*)
-		
 		if stmt.sSucc <> "" then print_stmts (M.find stmt.sSucc stmts) else () in
 	(if M.mem head stmts then print_stmts (M.find head stmts));
-
 	(*	M.iter (fun id stmt -> Printf.printf "%s : " id; print indent f stmt.sInst) stmts;*)
 	print_newline ()
-	
 let print_fundef indent ({fName = Id.L name; fArgs = args; fFargs = fargs; fRet = ret; fBlocks = blocks; fHead = head; fDef_regs = def_regs} as f) = 
 	Global.indent indent; Printf.printf "<${"%"}s>\n" name;
 	Global.indent indent; Printf.printf "Args = "; List.iter (Printf.printf "%s ") args; print_newline (); 
@@ -163,16 +161,15 @@ let print_fundef indent ({fName = Id.L name; fArgs = args; fFargs = fargs; fRet 
 	Global.indent indent; Printf.printf "def_regs = "; List.iter (Printf.printf "%s ") def_regs; print_newline (); *)
 	print_newline ();
 	M.iter (fun _ blk -> print_block indent f blk) blocks
-
 let print_prog indent (Prog (fundefs, main_fun)) =
 	print_newline ();
 	List.iter (print_fundef indent) fundefs;
 	print_fundef indent main_fun
 
 
-(******************************)
-(***** 各種データ取得用関数 *****)
-(******************************)
+(*-----------------------------------------------------------------------------
+ * 各種データ取得用関数
+ *-----------------------------------------------------------------------------*)
 
 let def_sites = ref M.empty
 let use_sites = ref M.empty
@@ -183,9 +180,7 @@ let get_def_sites x = if M.mem x !def_sites then M.find x !def_sites else []
 let get_use_sites x = if M.mem x !use_sites then M.find x !use_sites else []
 let get_def_as_block blk_id = find_assert "get_def_as_block" blk_id !def_as_block
 let get_use_as_block blk_id = find_assert "get_use_as_block" blk_id !use_as_block
-
 let diff_list ls1 ls2 = Asm.diff_list ls1 ls2
-
 let get_def_use stmt = 
 	match stmt.sInst with
 		(* 0変数を使用 *)
@@ -266,12 +261,12 @@ let set_def_use_sites fundef =
 			def_as_block := M.add blk.bId !kill !def_as_block;
 			use_as_block := M.add blk.bId !gen !use_as_block; 
 	) fundef.fBlocks
-	
 
 
-(************************************)
-(***** Asm <-> Block 変換系関数群 *****)
-(************************************)
+(*-----------------------------------------------------------------------------
+ * Asm <-> Block 変換系関数群
+ *-----------------------------------------------------------------------------*)
+
 let pred_stmt = ref None
 let stmt_cnt = ref (-1)
 let block_cnt = ref (-1)
